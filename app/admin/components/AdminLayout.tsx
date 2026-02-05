@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,6 +21,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Job Board']);
+
+  // Auto-expand menus based on current pathname
+  useEffect(() => {
+    const menus: string[] = [];
+    if (pathname?.startsWith('/admin/job-board')) menus.push('Job Board');
+    if (pathname?.startsWith('/admin/reports')) menus.push('Reports');
+    if (pathname?.startsWith('/admin/listing-fields')) menus.push('Listing Fields');
+    if (pathname?.startsWith('/admin/settings')) menus.push('Settings');
+    if (menus.length > 0) {
+      setExpandedMenus(menus);
+    }
+  }, [pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminAuth');
@@ -72,35 +84,53 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     },
     {
       name: 'Reports',
-      path: '/admin/reports',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
       ),
+      subItems: [
+        { name: 'Employer Performance', path: '/admin/reports/employer-performance' },
+        { name: 'Job Performance', path: '/admin/reports/job-performance' },
+      ],
     },
     {
       name: 'Listing Fields',
-      path: '/admin/listing-fields',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
         </svg>
       ),
+      subItems: [
+        { name: 'Custom Fields', path: '/admin/listing-fields/custom-fields' },
+        { name: 'Categories', path: '/admin/listing-fields/categories' },
+        { name: 'Job Types', path: '/admin/listing-fields/job-types' },
+      ],
     },
     {
       name: 'Settings',
-      path: '/admin/settings',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       ),
+      subItems: [
+        { name: 'System Settings', path: '/admin/settings/system-settings' },
+        { name: 'Site Admins', path: '/admin/settings/site-admins' },
+        { name: 'Edit Language', path: '/admin/settings/edit-language' },
+        { name: 'Refine Search Settings', path: '/admin/settings/refine-search-settings' },
+        { name: 'Job Backfilling', path: '/admin/settings/job-backfilling' },
+        { name: 'RSS/XML Feeds', path: '/admin/settings/rss-xml-feeds' },
+        { name: 'Job Auto Import', path: '/admin/settings/job-auto-import' },
+      ],
     },
   ];
 
   const isJobBoardActive = pathname?.startsWith('/admin/job-board');
+  const isReportsActive = pathname?.startsWith('/admin/reports');
+  const isListingFieldsActive = pathname?.startsWith('/admin/listing-fields');
+  const isSettingsActive = pathname?.startsWith('/admin/settings');
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -137,7 +167,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const isExpanded = expandedMenus.includes(item.name);
-            const isActive = item.path ? pathname === item.path : isJobBoardActive && item.name === 'Job Board';
+            const isActive = item.path 
+              ? pathname === item.path 
+              : (isJobBoardActive && item.name === 'Job Board') ||
+                (isReportsActive && item.name === 'Reports') ||
+                (isListingFieldsActive && item.name === 'Listing Fields') ||
+                (isSettingsActive && item.name === 'Settings');
 
             if (item.subItems) {
               return (

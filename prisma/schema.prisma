@@ -21,3 +21,61 @@ model Admin {
 
   @@map("admins")
 }
+
+model Job {
+  id              String   @id @default(cuid())
+  title           String
+  employer        String
+  product         String?
+  jobDescription  String   @db.Text
+  jobType         String
+  categories      String
+  location        String   @default("Onsite")
+  salaryFrom      String?
+  salaryTo        String?
+  salaryFrequency String?   @default("yearly")
+  howToApply      String   @default("email")
+  applyValue      String?
+  featured        Boolean  @default(false)
+  status          String   @default("Active")
+  views           Int      @default(0)
+  applications    Int      @default(0)
+  postedBy        String   @default("Admin")
+  postingDate      DateTime @default(now())
+  expirationDate  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("jobs")
+}
+
+model Employer {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  fullName          String
+  phone             String
+  location          String
+  password          String
+  companyName       String
+  website           String
+  logoUrl           String?
+  companyDescription String? @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("employers")
+}
+
+model JobSeeker {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  location  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("job_seekers")
+}

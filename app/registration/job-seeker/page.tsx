@@ -25,16 +25,51 @@ export default function JobSeekerRegistrationPage() {
     setFormData(prev => ({ ...prev, agreeToTerms: e.target.checked }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
     
     if (!formData.agreeToTerms) {
       alert('Please agree to the terms of use and privacy policy');
+      setIsSubmitting(false);
       return;
     }
     
-    // Handle form submission here
-    console.log('Form submitted:', formData);
+    try {
+      const response = await fetch('/api/job-seekers/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone || null,
+          location: formData.location || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Registration successful! You can now sign in.');
+        window.location.href = '/';
+      } else {
+        setError(data.error || 'Registration failed');
+        alert(data.error || 'Registration failed');
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during registration');
+      alert(err.message || 'An error occurred during registration');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -189,11 +224,17 @@ export default function JobSeekerRegistrationPage() {
 
             {/* Submit Button */}
             <div className="text-center">
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                  {error}
+                </div>
+              )}
               <button
                 type="submit"
-                className="bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-3 px-12 rounded-lg text-lg transition-colors"
+                disabled={isSubmitting}
+                className="bg-yellow-400 hover:bg-yellow-500 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-12 rounded-lg text-lg transition-colors"
               >
-                REGISTER
+                {isSubmitting ? 'REGISTERING...' : 'REGISTER'}
               </button>
             </div>
 

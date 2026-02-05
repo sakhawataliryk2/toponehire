@@ -89,9 +89,9 @@ export default function Header({ activePage = '' }: HeaderProps) {
           
           {/* Desktop Sign In/Sign Up (Right Side) */}
           <div className="hidden lg:flex items-center space-x-4">
-            <a href="#" className="text-gray-600 hover:text-gray-800 font-medium text-sm">
+            <Link href="/login" className={`font-medium text-sm ${activePage === 'login' ? 'text-gray-900 border-b-2 border-gray-900 pb-1' : 'text-gray-600 hover:text-gray-800'}`}>
               SIGN IN
-            </a>
+            </Link>
             <Link href="/registration" className="bg-yellow-400 hover:bg-yellow-500 text-yellow-800 px-4 py-2 rounded border border-gray-400 font-medium text-sm">
               SIGN UP
             </Link>
@@ -209,13 +209,13 @@ export default function Header({ activePage = '' }: HeaderProps) {
 
           {/* Mobile Sign In/Sign Up */}
           <div className="border-t border-gray-200 p-4 space-y-3">
-            <a
-              href="#"
+            <Link
+              href="/login"
               onClick={closeMobileMenu}
               className="block text-center text-gray-600 hover:text-gray-800 font-medium text-sm py-2"
             >
               SIGN IN
-            </a>
+            </Link>
             <Link
               href="/registration"
               onClick={closeMobileMenu}

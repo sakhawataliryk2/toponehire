@@ -13,6 +13,8 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "prisma:studio": "prisma studio",
     "migrate:admin": "tsx scripts/migrate-admin.ts",
+    "migrate:jobs": "tsx scripts/migrate-jobs.ts",
+    "migrate:users": "tsx scripts/migrate-employers-jobseekers.ts",
     "create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
