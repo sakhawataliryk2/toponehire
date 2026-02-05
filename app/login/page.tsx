@@ -21,7 +21,7 @@ export default function LoginPage() {
     const jobSeekerAuth = localStorage.getItem('jobSeekerAuth');
     
     if (employerAuth) {
-      router.push('/employer/dashboard');
+      router.push('/my-account');
     } else if (jobSeekerAuth) {
       router.push('/job-seeker/dashboard');
     }
@@ -57,7 +57,7 @@ export default function LoginPage() {
 
         // Redirect based on user type
         if (userType === 'employer') {
-          router.push('/employer/dashboard');
+          router.push('/my-account');
         } else {
           router.push('/job-seeker/dashboard');
         }

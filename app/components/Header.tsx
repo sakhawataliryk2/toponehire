@@ -2,14 +2,92 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface HeaderProps {
   activePage?: string;
 }
 
 export default function Header({ activePage = '' }: HeaderProps) {
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userType, setUserType] = useState<'employer' | 'job-seeker' | null>(null);
+  const [userName, setUserName] = useState('');
+
+  const checkAuthStatus = () => {
+    // Check if user is logged in
+    const employerAuth = localStorage.getItem('employerAuth');
+    const jobSeekerAuth = localStorage.getItem('jobSeekerAuth');
+    const employerUser = localStorage.getItem('employerUser');
+    const jobSeekerUser = localStorage.getItem('jobSeekerUser');
+
+    if (employerAuth && employerUser) {
+      setIsLoggedIn(true);
+      setUserType('employer');
+      try {
+        const user = JSON.parse(employerUser);
+        setUserName(user.fullName || user.companyName || 'Employer');
+      } catch (e) {
+        setUserName('Employer');
+      }
+    } else if (jobSeekerAuth && jobSeekerUser) {
+      setIsLoggedIn(true);
+      setUserType('job-seeker');
+      try {
+        const user = JSON.parse(jobSeekerUser);
+        setUserName(`${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Job Seeker');
+      } catch (e) {
+        setUserName('Job Seeker');
+      }
+    } else {
+      setIsLoggedIn(false);
+      setUserType(null);
+      setUserName('');
+    }
+  };
+
+  useEffect(() => {
+    checkAuthStatus();
+
+    // Listen for storage changes (when user logs in/out in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'employerAuth' || e.key === 'jobSeekerAuth' || 
+          e.key === 'employerUser' || e.key === 'jobSeekerUser') {
+        checkAuthStatus();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    // Also check on focus (when user returns to tab)
+    const handleFocus = () => {
+      checkAuthStatus();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    if (userType === 'employer') {
+      localStorage.removeItem('employerAuth');
+      localStorage.removeItem('employerUser');
+    } else if (userType === 'job-seeker') {
+      localStorage.removeItem('jobSeekerAuth');
+      localStorage.removeItem('jobSeekerUser');
+    }
+    setIsLoggedIn(false);
+    setUserType(null);
+    setUserName('');
+    router.push('/');
+    router.refresh();
+  };
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -87,14 +165,39 @@ export default function Header({ activePage = '' }: HeaderProps) {
             </Link>
           </nav>
           
-          {/* Desktop Sign In/Sign Up (Right Side) */}
+          {/* Desktop Sign In/Sign Up or Logout (Right Side) */}
           <div className="hidden lg:flex items-center space-x-4">
-            <Link href="/login" className={`font-medium text-sm ${activePage === 'login' ? 'text-gray-900 border-b-2 border-gray-900 pb-1' : 'text-gray-600 hover:text-gray-800'}`}>
-              SIGN IN
-            </Link>
-            <Link href="/registration" className="bg-yellow-400 hover:bg-yellow-500 text-yellow-800 px-4 py-2 rounded border border-gray-400 font-medium text-sm">
-              SIGN UP
-            </Link>
+            {isLoggedIn ? (
+              <>
+                {userType === 'employer' && (
+                  <Link
+                    href="/my-account"
+                    className={`font-medium text-sm px-4 py-2 rounded border transition-colors ${
+                      activePage === 'my-account'
+                        ? 'bg-yellow-400 text-gray-900 border-yellow-400'
+                        : 'bg-yellow-400 hover:bg-yellow-500 text-gray-900 border-yellow-400'
+                    }`}
+                  >
+                    MY ACCOUNT
+                  </Link>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded border border-gray-400 font-medium text-sm transition-colors"
+                >
+                  LOGOUT
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className={`font-medium text-sm ${activePage === 'login' ? 'text-gray-900 border-b-2 border-gray-900 pb-1' : 'text-gray-600 hover:text-gray-800'}`}>
+                  SIGN IN
+                </Link>
+                <Link href="/registration" className="bg-yellow-400 hover:bg-yellow-500 text-yellow-800 px-4 py-2 rounded border border-gray-400 font-medium text-sm">
+                  SIGN UP
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -207,22 +310,51 @@ export default function Header({ activePage = '' }: HeaderProps) {
             </div>
           </nav>
 
-          {/* Mobile Sign In/Sign Up */}
+          {/* Mobile Sign In/Sign Up or Logout */}
           <div className="border-t border-gray-200 p-4 space-y-3">
-            <Link
-              href="/login"
-              onClick={closeMobileMenu}
-              className="block text-center text-gray-600 hover:text-gray-800 font-medium text-sm py-2"
-            >
-              SIGN IN
-            </Link>
-            <Link
-              href="/registration"
-              onClick={closeMobileMenu}
-              className="block text-center bg-yellow-400 hover:bg-yellow-500 text-yellow-800 px-4 py-2 rounded border border-gray-400 font-medium text-sm"
-            >
-              SIGN UP
-            </Link>
+            {isLoggedIn ? (
+              <>
+                {userType === 'employer' && (
+                  <Link
+                    href="/my-account"
+                    onClick={closeMobileMenu}
+                    className={`block text-center font-medium text-sm px-4 py-2 rounded border transition-colors ${
+                      activePage === 'my-account'
+                        ? 'bg-yellow-400 text-gray-900 border-yellow-400'
+                        : 'bg-yellow-400 hover:bg-yellow-500 text-gray-900 border-yellow-400'
+                    }`}
+                  >
+                    MY ACCOUNT
+                  </Link>
+                )}
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    closeMobileMenu();
+                  }}
+                  className="w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded border border-gray-400 font-medium text-sm transition-colors"
+                >
+                  LOGOUT
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={closeMobileMenu}
+                  className="block text-center text-gray-600 hover:text-gray-800 font-medium text-sm py-2"
+                >
+                  SIGN IN
+                </Link>
+                <Link
+                  href="/registration"
+                  onClick={closeMobileMenu}
+                  className="block text-center bg-yellow-400 hover:bg-yellow-500 text-yellow-800 px-4 py-2 rounded border border-gray-400 font-medium text-sm"
+                >
+                  SIGN UP
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
