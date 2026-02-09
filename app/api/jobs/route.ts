@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status');
     const featured = searchParams.get('featured');
+    const limitParam = searchParams.get('limit');
+    const take = limitParam ? Math.min(parseInt(limitParam, 10) || 50, 100) : undefined;
 
     const where: any = {};
 
@@ -31,6 +33,7 @@ export async function GET(request: NextRequest) {
     const jobs = await prisma.job.findMany({
       where,
       orderBy: { postingDate: 'desc' },
+      ...(take && { take }),
     });
 
     return NextResponse.json({ jobs, count: jobs.length });

@@ -1,72 +1,111 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import JobCard from './JobCard';
 
-interface Job {
-  date: string;
+interface ApiJob {
+  id: string;
   title: string;
-  description: string;
-  company: string;
+  employer: string;
+  jobDescription: string;
   location: string;
+  postingDate: string;
 }
 
-const jobs: Job[] = [
-  {
-    date: 'Feb 03, 2026',
-    title: 'Certified Medical Assistant ($28/hour)',
-    description: 'Hours: M-F 8:30-5 Responsibilities: The role supports healthcare teams by assisting with both clinical and non-clinical patient services under the direction of healthcare providers Key responsibilities include taking vital signs, documenting patient information, scheduling appointments, and managing patient flow This role involves direct interaction with patients to ensure their comfort and address concerns, as well as collaboration with physicians, nurse practitioners, and nursing staff to facilitate efficient care Assists junior Medical Assistants with day-to-day questions and responsibilities and helps facilitate their learning by participating in onboarding training Show patients to examination rooms, prepare necessary equipment for healthcare providers, and interview patients to obtain medical information, measure their vital signs, weight, and height, and record information in the patient\'s medical record Explain...',
-    company: 'Complete Healthcare Staffing',
-    location: 'Newton, MA, USA',
-  },
-  {
-    date: 'Feb 03, 2026',
-    title: 'Bilingual Medical Assistant (Spanish/English)',
-    description: 'Hiring for a bilingual Medical Assistant in Chicago, IL. MUST be fluent in Spanish and English. Pay rate: $22-25/hr based on experience Schedule: M/W/Th/F 8AM-5PM; Tuesday 8AM-8:30PM; Saturday 8AM-1PM. This will be rotating weekends. Will be scheduled for 40 hours total per week. 1 hour lunch break – 30 minutes of it is paid MUST have experienc with: vaccines, point of care testing, procedure set ups, Inventory, VFC coordination and sterilization Requirements: CMA Certification (National) within 90 days MUST have a Medical Assistant diploma or certificate from school 1 year of Medical Assistant experience Looking for skilled MA\'s Qualifications: High School Diploma or GED, completion of an accredited MA program Strong communication, organizational, and interpersonal skills Proficiency in clinical procedures, patient care, and administrative tasks Flexibility to work varied hours, including evenings and weekends, as required...',
-    company: 'Complete Healthcare Staffing',
-    location: 'Chicago, IL, USA',
-  },
-  {
-    date: 'Feb 03, 2026',
-    title: 'Part-time (16 hours/week) Registered Nurse $55/hr',
-    description: 'Hiring for a part-time (16 hours/week) Registered Nurse to do Community Health/Home Health nursing. Pay: $55/hr Schedule: M-F 8AM-4PM (2 – 8 hour shifts) Community based service program – for adults to receive services in their own communities (shelters and personal homes) rather than isolated settings. Driving required to care for participants in programs – traveling in Dorchester, Hyde Park, Rosindale, Mattapan, Cambridge, Brookline, Allston, and Roxbury area. RNs would report to office in the morning in Dorchester and from there leave to conduct visits. – Mileage is reimbursed – reimbursement does not include commute from home to office in the morning and does not include commute from office to home or commute from last patient to home at the end of the day. – Training happens on the job – cross training from other nurses. Experience/Skills: Minimum 1-2 years of home health/community health background – open to candidates who have worked in home health/...',
-    company: 'Complete Healthcare Staffing',
-    location: 'Boston, MA, USA',
-  },
-  {
-    date: 'Feb 03, 2026',
-    title: 'Certified Medical Assistant ($24/hour)',
-    description: 'Hiring for float medical assistants, sites available from Stamford to Rye Brook NY. Hours: 8-hour shifts between 7a-5p Type: temp to hire Responsibilities: Accompanies patients to exam/procedure room. Prepares patients for visit. Typically includes, vitals, height, weight, blood pressure, EKG, specimen collection (where applicable), phlebotomy (where applicable), INR (where applicable), pulse oximetry, spirometry, etc. Documents medical and surgical history, family history, social history, problem list, and medications, in EPIC. Assists physicians/providers with various procedures. Maintains patient records effectively Efficiently manages and routinely checks EPIC in-basket. Answers calls and return calls (in a timely manner) and provides pertinent information Requirements: High School Diploma or equivalent. Graduation from an accredited medical assistant certificate program. Certification/Registration (CCMA/CMA/AAMA/RMA) preferred.',
-    company: 'Complete Healthcare Staffing',
-    location: 'Greenwich, CT, USA',
-  },
-  {
-    date: 'Feb 03, 2026',
-    title: 'Certified Medical Assistant ($27/hour)',
-    description: 'Specialty practice hiring for medical assistant. Hours: M-F 8-5 Type: temp to hire Major Duties and Responsibilities: Interview patients, document basic medical history and confirm purpose of visit Prepare patients for examination by performing preliminary physical tests; taking blood pressure, weight and temperature Explain treatment and procedures to patients, assist the physician during exams Collect and prepare laboratory specimens Perform basic laboratory tests and ensure test results are prepared for physicians prior to patients next appointment Instruct patients about medication and special diets, prepare and administer medications as directed by the physician Draw blood, as required, perform urodynamic studies Perform catheter changes and instruct patients on usage, pessary changes and fittings RIMSO administration Maintain exam rooms, supplies, medications, etc., clean and sterilize patient rooms and equipment Other duties as assigned...',
-    company: 'Complete Healthcare Staffing',
-    location: 'Dedham, MA, USA',
-  },
-];
+function formatJobDate(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+  } catch {
+    return '';
+  }
+}
 
 export default function JobListings() {
+  const [jobs, setJobs] = useState<ApiJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchJobs() {
+      try {
+        const res = await fetch('/api/jobs?limit=10');
+        const contentType = res.headers.get('content-type');
+        if (!res.ok || !contentType?.includes('application/json')) {
+          setError('Failed to load jobs');
+          setJobs([]);
+          return;
+        }
+        const data = await res.json();
+        setJobs(data.jobs ?? []);
+        setError(null);
+      } catch {
+        setError('Failed to load jobs');
+        setJobs([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchJobs();
+  }, []);
+
+  if (loading) {
+    return (
+      <section>
+        <h3 className="text-2xl font-bold text-gray-900 mb-6">Latest Jobs</h3>
+        <div className="space-y-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white border border-gray-200 rounded-lg p-6 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-3" />
+              <div className="h-6 bg-gray-200 rounded w-3/4 mb-4" />
+              <div className="h-3 bg-gray-200 rounded w-full mb-2" />
+              <div className="h-3 bg-gray-200 rounded w-full mb-2" />
+              <div className="h-3 bg-gray-200 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section>
+        <h3 className="text-2xl font-bold text-gray-900 mb-6">Latest Jobs</h3>
+        <p className="text-red-600">{error}</p>
+        <div className="mt-4">
+          <Link href="/jobs" className="text-yellow-500 hover:text-yellow-600 font-semibold">
+            View all jobs →
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section>
       <h3 className="text-2xl font-bold text-gray-900 mb-6">Latest Jobs</h3>
       <div className="space-y-6">
-        {jobs.map((job, index) => (
-          <JobCard
-            key={index}
-            date={job.date}
-            title={job.title}
-            description={job.description}
-            company={job.company}
-            location={job.location}
-          />
-        ))}
+        {jobs.length === 0 ? (
+          <p className="text-gray-500">No jobs posted yet. Check back later.</p>
+        ) : (
+          jobs.map((job) => (
+            <JobCard
+              key={job.id}
+              date={formatJobDate(job.postingDate)}
+              title={job.title}
+              description={job.jobDescription}
+              company={job.employer}
+              location={job.location}
+            />
+          ))
+        )}
       </div>
-      
       <div className="mt-8 text-center">
-        <a href="#" className="text-yellow-500 hover:text-yellow-600 font-semibold">
+        <Link href="/jobs" className="text-yellow-500 hover:text-yellow-600 font-semibold">
           View all jobs →
-        </a>
+        </Link>
       </div>
     </section>
   );
