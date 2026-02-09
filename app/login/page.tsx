@@ -45,9 +45,11 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType?.includes('application/json');
+      const data = isJson ? await response.json() : null;
 
-      if (response.ok) {
+      if (response.ok && data?.user) {
         // Store auth data
         const authKey = userType === 'employer' ? 'employerAuth' : 'jobSeekerAuth';
         const userKey = userType === 'employer' ? 'employerUser' : 'jobSeekerUser';
@@ -62,10 +64,11 @@ export default function LoginPage() {
           router.push('/job-seeker/dashboard');
         }
       } else {
-        setError(data.error || 'Invalid credentials');
+        const message = data?.error ?? (data?.details ? `${data.error || 'Error'}: ${data.details}` : null);
+        setError(message || 'Invalid credentials. If this persists, check the terminal where npm run dev is running.');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('An error occurred. Please try again. Check the browser console and the terminal running npm run dev.');
       console.error('Login error:', err);
     } finally {
       setLoading(false);
