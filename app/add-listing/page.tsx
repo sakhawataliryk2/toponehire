@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -22,7 +22,7 @@ interface Education {
   present: boolean;
 }
 
-export default function CreateResumePage() {
+function CreateResumePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const listingType = searchParams.get('listing_type_id');
@@ -128,7 +128,7 @@ export default function CreateResumePage() {
     }
   };
 
-  const handleEditorInput = (ref: React.RefObject<HTMLDivElement>, field: string) => {
+  const handleEditorInput = (ref: React.RefObject<HTMLDivElement | null>, field: string) => {
     if (ref.current) {
       setFormData((prev) => ({ ...prev, [field]: ref.current!.innerHTML }));
     }
@@ -143,14 +143,36 @@ export default function CreateResumePage() {
     }
   };
 
-  const applyFormat = (command: string, value?: string, ref?: React.RefObject<HTMLDivElement>) => {
-    const targetRef = ref || personalSummaryRef;
-    document.execCommand(command, false, value);
-    targetRef.current?.focus();
+  const applyFormat = (command: string, value?: string, ref?: React.RefObject<HTMLDivElement | null> | HTMLDivElement | null) => {
+    let targetElement: HTMLDivElement | null = null;
+    
     if (ref) {
-      handleWorkExpDescInput(workExperiences.findIndex((_, i) => workExpDescRefs.current[i] === ref.current));
+      // Handle both RefObject and direct element
+      if ('current' in ref) {
+        targetElement = ref.current;
+      } else {
+        targetElement = ref;
+      }
     } else {
-      handleEditorInput(personalSummaryRef, 'personalSummary');
+      targetElement = personalSummaryRef.current;
+    }
+    
+    if (targetElement) {
+      targetElement.focus();
+      document.execCommand(command, false, value);
+      
+      if (ref && !('current' in ref)) {
+        // Direct element passed - find the index
+        const index = workExperiences.findIndex((_, i) => workExpDescRefs.current[i] === targetElement);
+        if (index !== -1) {
+          handleWorkExpDescInput(index);
+        }
+      } else if (ref && 'current' in ref) {
+        // RefObject passed
+        handleWorkExpDescInput(workExperiences.findIndex((_, i) => workExpDescRefs.current[i] === ref.current));
+      } else {
+        handleEditorInput(personalSummaryRef, 'personalSummary');
+      }
     }
   };
 
@@ -165,9 +187,9 @@ export default function CreateResumePage() {
     }
   };
 
-  const handleWorkExpChange = (index: number, field: keyof WorkExperience, value: any) => {
+  const handleWorkExpChange = (index: number, field: keyof WorkExperience, value: string | boolean) => {
     const newWorkExps = [...workExperiences];
-    newWorkExps[index][field] = value;
+    (newWorkExps[index] as any)[field] = value;
     setWorkExperiences(newWorkExps);
   };
 
@@ -182,9 +204,9 @@ export default function CreateResumePage() {
     }
   };
 
-  const handleEducationChange = (index: number, field: keyof Education, value: any) => {
+  const handleEducationChange = (index: number, field: keyof Education, value: string | boolean) => {
     const newEducations = [...educations];
-    newEducations[index][field] = value;
+    (newEducations[index] as any)[field] = value;
     setEducations(newEducations);
   };
 
@@ -804,7 +826,7 @@ export default function CreateResumePage() {
                   </div>
                   {/* Rich Text Editor Content */}
                   <div
-                    ref={(el) => (workExpDescRefs.current[index] = el)}
+                    ref={(el) => { workExpDescRefs.current[index] = el; }}
                     contentEditable
                     onInput={() => handleWorkExpDescInput(index)}
                     className="w-full min-h-[150px] px-4 py-3 border border-t-0 border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -911,5 +933,17 @@ export default function CreateResumePage() {
       </div>
       <Footer />
     </div>
+  );
+}
+
+export default function CreateResumePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <CreateResumePageContent />
+    </Suspense>
   );
 }

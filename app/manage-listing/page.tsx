@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Link from 'next/link';
 
-export default function ManageListingPage() {
+function ManageListingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const resumeId = searchParams.get('id');
@@ -114,5 +114,17 @@ export default function ManageListingPage() {
       </div>
       <Footer />
     </div>
+  );
+}
+
+export default function ManageListingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <ManageListingPageContent />
+    </Suspense>
   );
 }
