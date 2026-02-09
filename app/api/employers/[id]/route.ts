@@ -68,3 +68,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Failed to update employer' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    await prisma.employer.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ message: 'Employer deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting employer:', error);
+    return NextResponse.json({ error: 'Failed to delete employer' }, { status: 500 });
+  }
+}

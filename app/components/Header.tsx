@@ -140,9 +140,9 @@ export default function Header({ activePage = '' }: HeaderProps) {
             <Link href="#" className="text-gray-700 hover:text-yellow-500 font-medium text-sm">
               Post a Job
             </Link>
-            <Link href="#" className="text-gray-700 hover:text-yellow-500 font-medium text-sm">
-              Create/Post Your Resume
-            </Link>
+                <Link href="/add-listing?listing_type_id=Resume" className="text-gray-700 hover:text-yellow-500 font-medium text-sm">
+                  Create/Post Your Resume
+                </Link>
             <Link 
               href="/contact" 
               className={`font-medium text-sm ${
@@ -169,18 +169,16 @@ export default function Header({ activePage = '' }: HeaderProps) {
           <div className="hidden lg:flex items-center space-x-4">
             {isLoggedIn ? (
               <>
-                {userType === 'employer' && (
-                  <Link
-                    href="/my-account"
-                    className={`font-medium text-sm px-4 py-2 rounded border transition-colors ${
-                      activePage === 'my-account'
-                        ? 'bg-yellow-400 text-gray-900 border-yellow-400'
-                        : 'bg-yellow-400 hover:bg-yellow-500 text-gray-900 border-yellow-400'
-                    }`}
-                  >
-                    MY ACCOUNT
-                  </Link>
-                )}
+                <Link
+                  href={userType === 'employer' ? '/my-account' : '/my-listings/resume'}
+                  className={`font-medium text-sm px-4 py-2 rounded border transition-colors ${
+                    activePage === 'my-account'
+                      ? 'bg-yellow-400 text-gray-900 border-yellow-400'
+                      : 'bg-yellow-400 hover:bg-yellow-500 text-gray-900 border-yellow-400'
+                  }`}
+                >
+                  MY ACCOUNT
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded border border-gray-400 font-medium text-sm transition-colors"
@@ -279,7 +277,7 @@ export default function Header({ activePage = '' }: HeaderProps) {
                 Post a Job
               </Link>
               <Link
-                href="#"
+                href="/add-listing?listing_type_id=Resume"
                 onClick={closeMobileMenu}
                 className="block py-3 px-4 rounded-lg font-medium text-sm text-gray-700 hover:bg-gray-100"
               >
@@ -314,19 +312,17 @@ export default function Header({ activePage = '' }: HeaderProps) {
           <div className="border-t border-gray-200 p-4 space-y-3">
             {isLoggedIn ? (
               <>
-                {userType === 'employer' && (
-                  <Link
-                    href="/my-account"
-                    onClick={closeMobileMenu}
-                    className={`block text-center font-medium text-sm px-4 py-2 rounded border transition-colors ${
-                      activePage === 'my-account'
-                        ? 'bg-yellow-400 text-gray-900 border-yellow-400'
-                        : 'bg-yellow-400 hover:bg-yellow-500 text-gray-900 border-yellow-400'
-                    }`}
-                  >
-                    MY ACCOUNT
-                  </Link>
-                )}
+                <Link
+                  href={userType === 'employer' ? '/my-account' : '/my-listings/resume'}
+                  onClick={closeMobileMenu}
+                  className={`block text-center font-medium text-sm px-4 py-2 rounded border transition-colors ${
+                    activePage === 'my-account'
+                      ? 'bg-yellow-400 text-gray-900 border-yellow-400'
+                      : 'bg-yellow-400 hover:bg-yellow-500 text-gray-900 border-yellow-400'
+                  }`}
+                >
+                  MY ACCOUNT
+                </Link>
                 <button
                   onClick={() => {
                     handleLogout();

@@ -4,8 +4,10 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function JobSeekerRegistrationPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -58,8 +60,12 @@ export default function JobSeekerRegistrationPage() {
       const data = await response.json();
 
       if (response.ok) {
-        alert('Registration successful! You can now sign in.');
-        window.location.href = '/';
+        // Auto-login the user
+        localStorage.setItem('jobSeekerAuth', 'true');
+        localStorage.setItem('jobSeekerUser', JSON.stringify(data.jobSeeker));
+        
+        // Redirect to resume creation page
+        router.push('/add-listing?listing_type_id=Resume');
       } else {
         setError(data.error || 'Registration failed');
         alert(data.error || 'Registration failed');

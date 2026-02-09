@@ -1,22 +1,45 @@
-export default function JobsSidebar() {
-  const categories = [
-    { name: 'Healthcare', count: 5346 },
-    { name: 'Accounting', count: 908 },
-    { name: 'Nurse', count: 854 },
-    { name: 'Finance', count: 772 },
-    { name: 'Management', count: 596 },
-    { name: 'Information Technology', count: 465 },
-    { name: 'Marketing', count: 461 },
-    { name: 'Insurance', count: 400 },
-    { name: 'Executive', count: 399 },
-    { name: 'Legal', count: 344 },
-  ];
+interface JobsSidebarProps {
+  jobs?: any[];
+}
 
-  const jobTypes = [
-    { name: 'Full time', count: 463 },
-    { name: 'Part time', count: 76 },
-    { name: 'Intern', count: 5 },
-  ];
+export default function JobsSidebar({ jobs = [] }: JobsSidebarProps) {
+  // Calculate real category counts from jobs
+  const categoryCounts: { [key: string]: number } = {};
+  const jobTypeCounts: { [key: string]: number } = {};
+  let onsiteCount = 0;
+
+  jobs.forEach((job) => {
+    // Count categories (categories are comma-separated)
+    if (job.categories) {
+      const cats = job.categories.split(',').map((c: string) => c.trim());
+      cats.forEach((cat: string) => {
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      });
+    }
+
+    // Count job types
+    if (job.jobType) {
+      const type = job.jobType.trim();
+      jobTypeCounts[type] = (jobTypeCounts[type] || 0) + 1;
+    }
+
+    // Count location type
+    if (job.location && job.location.toLowerCase().includes('onsite')) {
+      onsiteCount++;
+    } else if (!job.location || job.location === 'Onsite') {
+      onsiteCount++;
+    }
+  });
+
+  // Sort categories by count and get top 10
+  const categories = Object.entries(categoryCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  const jobTypes = Object.entries(jobTypeCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 
   const salaryRanges = [
     { name: 'up to $20,000', count: 13 },
@@ -53,14 +76,18 @@ export default function JobsSidebar() {
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h3 className="text-xl font-bold text-gray-900 mb-4">Refine by Categories</h3>
         <ul className="space-y-2">
-          {categories.map((category, index) => (
-            <li key={index}>
-              <a href="#" className="flex justify-between text-gray-700 hover:text-yellow-500">
-                <span>{category.name}</span>
-                <span className="font-semibold text-yellow-500">{category.count}</span>
-              </a>
-            </li>
-          ))}
+          {categories.length > 0 ? (
+            categories.map((category, index) => (
+              <li key={index}>
+                <a href="#" className="flex justify-between text-gray-700 hover:text-yellow-500">
+                  <span>{category.name}</span>
+                  <span className="font-semibold text-yellow-500">{category.count.toLocaleString()}</span>
+                </a>
+              </li>
+            ))
+          ) : (
+            <li className="text-gray-500 text-sm">No categories available</li>
+          )}
         </ul>
       </div>
 
@@ -68,14 +95,18 @@ export default function JobsSidebar() {
       <div className="bg-white border border-gray-200 rounded-lg p-6">
         <h3 className="text-xl font-bold text-gray-900 mb-4">Refine by Job Type</h3>
         <ul className="space-y-2">
-          {jobTypes.map((type, index) => (
-            <li key={index}>
-              <a href="#" className="flex justify-between text-gray-700 hover:text-yellow-500">
-                <span>{type.name}</span>
-                <span className="font-semibold text-yellow-500">{type.count}</span>
-              </a>
-            </li>
-          ))}
+          {jobTypes.length > 0 ? (
+            jobTypes.map((type, index) => (
+              <li key={index}>
+                <a href="#" className="flex justify-between text-gray-700 hover:text-yellow-500">
+                  <span>{type.name}</span>
+                  <span className="font-semibold text-yellow-500">{type.count.toLocaleString()}</span>
+                </a>
+              </li>
+            ))
+          ) : (
+            <li className="text-gray-500 text-sm">No job types available</li>
+          )}
         </ul>
       </div>
 
@@ -107,7 +138,7 @@ export default function JobsSidebar() {
           <li>
             <a href="#" className="flex justify-between text-gray-700 hover:text-yellow-500">
               <span>Onsite</span>
-              <span className="font-semibold text-yellow-500">10306</span>
+              <span className="font-semibold text-yellow-500">{onsiteCount.toLocaleString()}</span>
             </a>
           </li>
         </ul>

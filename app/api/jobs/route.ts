@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
 
     if (status && status !== 'Any Status') {
       where.status = status;
+    } else {
+      // For public jobs page, default to Active jobs
+      where.status = 'Active';
     }
 
     if (featured === 'true') {

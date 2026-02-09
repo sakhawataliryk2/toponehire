@@ -77,5 +77,30 @@ model JobSeeker {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  resumes   Resume[]
+
   @@map("job_seekers")
+}
+
+model Resume {
+  id                  String   @id @default(cuid())
+  jobSeekerId         String
+  resumeFileUrl       String?
+  desiredJobTitle     String
+  jobType             String
+  categories          String
+  personalSummary     String   @db.Text
+  location            String
+  phone               String
+  letEmployersFind    Boolean  @default(true)
+  workExperience      String?  @db.Text // JSON array of work experiences
+  education           String?  @db.Text // JSON array of education
+  views               Int      @default(0)
+  status              String   @default("Active")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  jobSeeker           JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  @@map("resumes")
 }
