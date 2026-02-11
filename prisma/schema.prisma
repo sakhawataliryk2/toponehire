@@ -104,3 +104,101 @@ model Resume {
 
   @@map("resumes")
 }
+
+// ---- eCommerce ----
+enum ProductType {
+  EMPLOYER
+  JOB_SEEKER
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+model Product {
+  id                     String          @id @default(cuid())
+  type                   ProductType
+  name                   String
+  description            String?        @db.Text
+  price                  Decimal         @db.Decimal(10, 2)
+  billingInterval        BillingInterval @default(MONTHLY)
+  firstMonthFree         Boolean         @default(false)
+  postJobs               Boolean         @default(false)
+  featuredEmployer       Boolean         @default(false)
+  resumeAccess           Boolean         @default(false)
+  postResumes            Boolean         @default(false)
+  jobAccess              Boolean         @default(false)
+  assignedOnRegistration Boolean         @default(false)
+  active                 Boolean         @default(true)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  orders                 Order[]
+
+  @@map("products")
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+enum DiscountStatus {
+  ACTIVE
+  EXPIRED
+  NOT_ACTIVE
+  PENDING_USED
+}
+
+model Discount {
+  id         String         @id @default(cuid())
+  code       String         @unique
+  type       DiscountType
+  value      Decimal        @db.Decimal(10, 2)
+  maxUses    Int            @default(1)
+  usedCount  Int            @default(0)
+  startDate  DateTime
+  expiryDate DateTime?
+  status     DiscountStatus @default(NOT_ACTIVE)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@map("discounts")
+}
+
+enum OrderStatus {
+  PAID
+  UNPAID
+}
+
+model Order {
+  id             String      @id @default(cuid())
+  invoiceNumber  String      @unique
+  customerType   ProductType
+  employerId     String?
+  jobSeekerId    String?
+  productId      String
+  total          Decimal     @db.Decimal(10, 2)
+  paymentMethodId String?
+  status         OrderStatus @default(UNPAID)
+  createdAt      DateTime    @default(now())
+
+  product        Product     @relation(fields: [productId], references: [id])
+  paymentMethod  PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+
+  @@map("orders")
+}
+
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(true)
+  config    String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+
+  @@map("payment_methods")
+}

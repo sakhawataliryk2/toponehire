@@ -1,0 +1,175 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+model Job {
+  id              String    @id @default(cuid())
+  title           String
+  employer        String
+  product         String?
+  jobDescription  String    @db.Text
+  jobType         String
+  categories      String
+  location        String    @default("Onsite")
+  salaryFrom      String?
+  salaryTo        String?
+  salaryFrequency String?   @default("yearly")
+  howToApply      String    @default("email")
+  applyValue      String?
+  featured        Boolean   @default(false)
+  status          String    @default("Active")
+  views           Int       @default(0)
+  applications    Int       @default(0)
+  postedBy        String    @default("Admin")
+  postingDate     DateTime  @default(now())
+  expirationDate  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("jobs")
+}
+
+model Employer {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  fullName           String
+  phone              String
+  location           String
+  password           String
+  companyName        String
+  website            String
+  logoUrl            String?
+  companyDescription String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("employers")
+}
+
+model JobSeeker {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  location  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resumes Resume[]
+
+  @@map("job_seekers")
+}
+
+model Resume {
+  id               String   @id @default(cuid())
+  jobSeekerId      String
+  resumeFileUrl    String?
+  desiredJobTitle  String
+  jobType          String
+  categories       String
+  personalSummary  String   @db.Text
+  location         String
+  phone            String
+  letEmployersFind Boolean  @default(true)
+  workExperience   String?  @db.Text // JSON array of work experiences
+  education        String?  @db.Text // JSON array of education
+  views            Int      @default(0)
+  status           String   @default("Active")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  jobSeeker JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  @@map("resumes")
+}
+
+// eCommerce: products (employer + job seeker)
+model Product {
+  id                     String   @id @default(cuid())
+  type                   String // "employer" | "job_seeker"
+  name                   String
+  description            String   @db.Text
+  price                  Decimal  @db.Decimal(10, 2)
+  priceDuration          String   @default("monthly") // "monthly" | "yearly"
+  recurring              Boolean  @default(true)
+  firstMonthFree         Boolean  @default(false)
+  postJobs               Boolean  @default(false) // employer
+  featuredEmployer       Boolean  @default(false) // employer
+  resumeAccess           Boolean  @default(false) // employer
+  postResumes            Boolean  @default(false) // job_seeker
+  jobAccess              Boolean  @default(false) // job_seeker
+  assignedOnRegistration Boolean  @default(false)
+  active                 Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  orders Order[]
+
+  @@map("products")
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  invoiceNumber Int      @unique
+  customerType  String // "employer" | "job_seeker"
+  customerId    String?
+  customerName  String
+  customerEmail String?
+  productId     String
+  total         Decimal  @db.Decimal(10, 2)
+  paymentMethod String?
+  status        String   @default("Unpaid") // "Paid" | "Unpaid"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("orders")
+}
+
+model Discount {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  type       String // "percent" | "fixed"
+  value      Decimal   @db.Decimal(10, 2) // percent 0-100 or fixed amount
+  maxUses    Int       @default(0) // 0 = unlimited
+  usedCount  Int       @default(0)
+  startDate  DateTime
+  expiryDate DateTime?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("discounts")
+}
+
+model EcommerceSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+
+  @@map("ecommerce_settings")
+}

@@ -26,6 +26,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     const menus: string[] = [];
     if (pathname?.startsWith('/admin/job-board')) menus.push('Job Board');
+    if (pathname?.startsWith('/admin/ecommerce')) menus.push('eCommerce');
     if (pathname?.startsWith('/admin/reports')) menus.push('Reports');
     if (pathname?.startsWith('/admin/listing-fields')) menus.push('Listing Fields');
     if (pathname?.startsWith('/admin/settings')) menus.push('Settings');
@@ -75,12 +76,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     },
     {
       name: 'eCommerce',
-      path: '/admin/ecommerce',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       ),
+      subItems: [
+        { name: 'Orders', path: '/admin/ecommerce/orders' },
+        { name: 'Employer Products', path: '/admin/ecommerce/employer-products' },
+        { name: 'Job Seeker Products', path: '/admin/ecommerce/job-seeker-products' },
+        { name: 'Discounts', path: '/admin/ecommerce/discounts' },
+        { name: 'Payment Methods', path: '/admin/ecommerce/payment-methods' },
+      ],
     },
     {
       name: 'Reports',
@@ -128,6 +135,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   ];
 
   const isJobBoardActive = pathname?.startsWith('/admin/job-board');
+  const isEcommerceActive = pathname?.startsWith('/admin/ecommerce');
   const isReportsActive = pathname?.startsWith('/admin/reports');
   const isListingFieldsActive = pathname?.startsWith('/admin/listing-fields');
   const isSettingsActive = pathname?.startsWith('/admin/settings');
@@ -170,6 +178,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             const isActive = item.path 
               ? pathname === item.path 
               : (isJobBoardActive && item.name === 'Job Board') ||
+                (isEcommerceActive && item.name === 'eCommerce') ||
                 (isReportsActive && item.name === 'Reports') ||
                 (isListingFieldsActive && item.name === 'Listing Fields') ||
                 (isSettingsActive && item.name === 'Settings');
