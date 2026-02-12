@@ -3,12 +3,25 @@
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import DynamicFormField from '../../components/DynamicFormField';
+
+interface CustomField {
+  id: string;
+  caption: string;
+  type: string;
+  required: boolean;
+  placeholder?: string | null;
+  helpText?: string | null;
+  options?: string | null;
+}
 
 export default function JobSeekerRegistrationPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [loadingFields, setLoadingFields] = useState(true);
+  const [formData, setFormData] = useState<Record<string, any>>({
     email: '',
     password: '',
     firstName: '',
@@ -18,6 +31,36 @@ export default function JobSeekerRegistrationPage() {
     agreeToTerms: false,
   });
 
+  useEffect(() => {
+    async function fetchCustomFields() {
+      try {
+        const res = await fetch('/api/custom-fields?context=JOB_SEEKER');
+        const data = await res.json();
+        if (data.fields) {
+          setCustomFields(data.fields);
+          // Initialize form data for custom fields
+          const initialData: Record<string, any> = {};
+          data.fields.forEach((field: CustomField) => {
+            const fieldKey = `customField_${field.id}`;
+            if (field.type === 'CHECKBOX') {
+              initialData[fieldKey] = false;
+            } else if (field.type === 'MULTISELECT') {
+              initialData[fieldKey] = [];
+            } else {
+              initialData[fieldKey] = '';
+            }
+          });
+          setFormData(prev => ({ ...prev, ...initialData }));
+        }
+      } catch (error) {
+        console.error('Error fetching custom fields:', error);
+      } finally {
+        setLoadingFields(false);
+      }
+    }
+    fetchCustomFields();
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -25,6 +68,10 @@ export default function JobSeekerRegistrationPage() {
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, agreeToTerms: e.target.checked }));
+  };
+
+  const handleCustomFieldChange = (fieldId: string, value: any) => {
+    setFormData(prev => ({ ...prev, [`customField_${fieldId}`]: value }));
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,19 +89,30 @@ export default function JobSeekerRegistrationPage() {
     }
     
     try {
+      // Collect all custom field values
+      const submissionData: Record<string, any> = {};
+      
+      // Add all custom field values
+      Object.keys(formData).forEach(key => {
+        if (key.startsWith('customField_')) {
+          submissionData[key] = formData[key];
+        }
+      });
+      
+      // Also include standard fields if they exist (for backward compatibility)
+      if (formData.email) submissionData.email = formData.email;
+      if (formData.password) submissionData.password = formData.password;
+      if (formData.firstName) submissionData.firstName = formData.firstName;
+      if (formData.lastName) submissionData.lastName = formData.lastName;
+      if (formData.phone) submissionData.phone = formData.phone;
+      if (formData.location) submissionData.location = formData.location;
+
       const response = await fetch('/api/job-seekers/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone || null,
-          location: formData.location || null,
-        }),
+        body: JSON.stringify(submissionData),
       });
 
       const data = await response.json();
@@ -99,111 +157,58 @@ export default function JobSeekerRegistrationPage() {
           </div>
 
           {/* Registration Form */}
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Two Column Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-6">
-                <div>
-                  <label htmlFor="email" className="block text-gray-700 font-medium mb-2">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white"
-                    placeholder="your@email.com"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="firstName" className="block text-gray-700 font-medium mb-2">
-                    First Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white"
-                    placeholder="Your first name"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="block text-gray-700 font-medium mb-2">
-                    Phone <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white"
-                    placeholder="(123) 456-7890"
-                  />
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                <div>
-                  <label htmlFor="password" className="block text-gray-700 font-medium mb-2">
-                    Password <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white"
-                    placeholder="••••••••"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="lastName" className="block text-gray-700 font-medium mb-2">
-                    Last Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white"
-                    placeholder="Your last name"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="location" className="block text-gray-700 font-medium mb-2">
-                    Location <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-white"
-                    placeholder="City, State"
-                  />
-                </div>
-              </div>
+          {loadingFields ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600">Loading form fields...</p>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Dynamic Custom Fields */}
+              {customFields.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {customFields.map((field) => {
+                    const fieldKey = `customField_${field.id}`;
+                    // Map standard fields if custom fields match
+                    let mappedValue = formData[fieldKey];
+                    const captionLower = field.caption.toLowerCase();
+                    
+                    // Map to standard fields if they match
+                    if (captionLower.includes('email') && !mappedValue) mappedValue = formData.email;
+                    else if ((captionLower.includes('first name') || captionLower.includes('firstname')) && !mappedValue) mappedValue = formData.firstName;
+                    else if ((captionLower.includes('last name') || captionLower.includes('lastname')) && !mappedValue) mappedValue = formData.lastName;
+                    else if (captionLower.includes('phone') && !mappedValue) mappedValue = formData.phone;
+                    else if (captionLower.includes('location') && !mappedValue) mappedValue = formData.location;
+                    else if (captionLower.includes('password') && !mappedValue) mappedValue = formData.password;
+                    
+                    return (
+                      <DynamicFormField
+                        key={field.id}
+                        field={field}
+                        value={mappedValue}
+                        onChange={(value) => {
+                          handleCustomFieldChange(field.id, value);
+                          // Also update standard fields if they match
+                          const captionLower = field.caption.toLowerCase();
+                          if (captionLower.includes('email')) setFormData(prev => ({ ...prev, email: value }));
+                          else if (captionLower.includes('first name') || captionLower.includes('firstname')) setFormData(prev => ({ ...prev, firstName: value }));
+                          else if (captionLower.includes('last name') || captionLower.includes('lastname')) setFormData(prev => ({ ...prev, lastName: value }));
+                          else if (captionLower.includes('phone')) setFormData(prev => ({ ...prev, phone: value }));
+                          else if (captionLower.includes('location')) setFormData(prev => ({ ...prev, location: value }));
+                          else if (captionLower.includes('password')) setFormData(prev => ({ ...prev, password: value }));
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Message when no custom fields are configured */}
+              {customFields.length === 0 && !loadingFields && (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-gray-600 text-lg mb-2">No registration fields have been configured yet.</p>
+                  <p className="text-gray-500 text-sm">Please contact an administrator to set up the registration form fields.</p>
+                </div>
+              )}
 
             {/* Terms and Conditions */}
             <div className="flex items-start">
@@ -259,6 +264,7 @@ export default function JobSeekerRegistrationPage() {
               </div>
             </div>
           </form>
+          )}
         </div>
       </div>
 

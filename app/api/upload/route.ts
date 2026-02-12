@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
       fileName: fileName,
     });
   } catch (error: any) {
-    console.error('Error uploading resume:', error);
+    console.error('Error uploading file:', error);
     return NextResponse.json(
-      { error: 'Failed to upload resume', details: error?.message },
+      { error: 'Failed to upload file', details: error?.message },
       { status: 500 }
     );
   }

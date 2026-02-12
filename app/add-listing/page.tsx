@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import DynamicFormField from '../components/DynamicFormField';
 
 interface WorkExperience {
   position: string;
@@ -22,6 +23,16 @@ interface Education {
   present: boolean;
 }
 
+interface CustomField {
+  id: string;
+  caption: string;
+  type: string;
+  required: boolean;
+  placeholder?: string | null;
+  helpText?: string | null;
+  options?: string | null;
+}
+
 function CreateResumePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -33,8 +44,11 @@ function CreateResumePageContent() {
   const [resumeFileUrl, setResumeFileUrl] = useState<string>('');
   const personalSummaryRef = useRef<HTMLDivElement>(null);
   const workExpDescRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+  
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [loadingFields, setLoadingFields] = useState(true);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Record<string, any>>({
     desiredJobTitle: '',
     jobType: '',
     categories: '',
@@ -72,6 +86,39 @@ function CreateResumePageContent() {
     }
   }, [router]);
 
+  // Fetch custom fields for RESUME context
+  useEffect(() => {
+    async function fetchCustomFields() {
+      try {
+        const res = await fetch('/api/custom-fields?context=RESUME');
+        const data = await res.json();
+        if (data.fields) {
+          setCustomFields(data.fields);
+          // Initialize form data for custom fields
+          const initialData: Record<string, any> = {};
+          data.fields.forEach((field: CustomField) => {
+            const fieldKey = `customField_${field.id}`;
+            if (field.type === 'CHECKBOX') {
+              initialData[fieldKey] = false;
+            } else if (field.type === 'MULTISELECT') {
+              initialData[fieldKey] = [];
+            } else {
+              initialData[fieldKey] = '';
+            }
+          });
+          setFormData(prev => ({ ...prev, ...initialData }));
+        }
+      } catch (error) {
+        console.error('Error fetching custom fields:', error);
+      } finally {
+        setLoadingFields(false);
+      }
+    }
+    if (isAuthenticated && listingType === 'Resume') {
+      fetchCustomFields();
+    }
+  }, [isAuthenticated, listingType]);
+
   // Close categories dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -90,6 +137,10 @@ function CreateResumePageContent() {
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
+  };
+
+  const handleCustomFieldChange = (fieldId: string, value: any) => {
+    setFormData(prev => ({ ...prev, [`customField_${fieldId}`]: value }));
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -215,12 +266,88 @@ function CreateResumePageContent() {
     setLoading(true);
 
     try {
-      // Validate required fields
-      if (!formData.desiredJobTitle || !formData.jobType || selectedCategories.length === 0 || !formData.personalSummary || !formData.location || !formData.phone) {
-        alert('Please fill in all required fields, including at least one category');
-        setLoading(false);
-        return;
+      // Collect all custom field values
+      const submissionData: Record<string, any> = {};
+      
+      // Upload files for custom fields (PICTURE, FILE types)
+      const fileUploadPromises: Promise<void>[] = [];
+      
+      for (const field of customFields) {
+        const fieldKey = `customField_${field.id}`;
+        const value = formData[fieldKey];
+        
+        if ((field.type === 'PICTURE' || field.type === 'FILE') && value instanceof File) {
+          // Upload file and store URL
+          const uploadPromise = (async () => {
+            const fileFormData = new FormData();
+            fileFormData.append('file', value);
+            fileFormData.append('folder', 'resumes');
+            
+            const uploadResponse = await fetch('/api/upload', {
+              method: 'POST',
+              body: fileFormData,
+            });
+            
+            if (uploadResponse.ok) {
+              const uploadData = await uploadResponse.json();
+              submissionData[fieldKey] = uploadData.url;
+            } else {
+              throw new Error(`Failed to upload ${field.caption}`);
+            }
+          })();
+          fileUploadPromises.push(uploadPromise);
+        } else {
+          // Regular field value
+          submissionData[fieldKey] = value;
+        }
       }
+      
+      // Wait for all file uploads to complete
+      await Promise.all(fileUploadPromises);
+      
+      // Handle legacy resume file upload if it exists
+      if (resumeFile && resumeFileUrl) {
+        submissionData.resumeFileUrl = resumeFileUrl;
+      }
+      
+      // Extract standard fields from custom field values (map by caption)
+      let desiredJobTitle = '';
+      let jobType = '';
+      let categories = '';
+      let personalSummary = '';
+      let location = '';
+      let phone = '';
+      let letEmployersFind = true;
+
+      for (const field of customFields) {
+        const fieldKey = `customField_${field.id}`;
+        const value = submissionData[fieldKey] || formData[fieldKey];
+        const captionLower = field.caption.toLowerCase();
+
+        if (captionLower.includes('desired') && captionLower.includes('job') && captionLower.includes('title')) desiredJobTitle = String(value || '');
+        else if (captionLower.includes('job') && captionLower.includes('type')) jobType = String(value || '');
+        else if (captionLower.includes('categor')) categories = String(value || '');
+        else if (captionLower.includes('personal') && captionLower.includes('summary')) personalSummary = String(value || '');
+        else if (captionLower.includes('location')) location = String(value || '');
+        else if (captionLower.includes('phone')) phone = String(value || '');
+        else if (captionLower.includes('employer') && captionLower.includes('find')) letEmployersFind = Boolean(value);
+      }
+
+      // Also check direct field names in formData (for backward compatibility)
+      desiredJobTitle = desiredJobTitle || formData.desiredJobTitle || '';
+      jobType = jobType || formData.jobType || '';
+      categories = categories || formData.categories || '';
+      personalSummary = personalSummary || formData.personalSummary || '';
+      location = location || formData.location || '';
+      phone = phone || formData.phone || '';
+      letEmployersFind = formData.letEmployersFind !== undefined ? formData.letEmployersFind : true;
+
+      // Include all custom field values
+      Object.keys(formData).forEach(key => {
+        if (key.startsWith('customField_')) {
+          submissionData[key] = formData[key];
+        }
+      });
 
       const response = await fetch('/api/resumes', {
         method: 'POST',
@@ -229,16 +356,18 @@ function CreateResumePageContent() {
         },
         body: JSON.stringify({
           jobSeekerId: jobSeeker.id,
-          resumeFileUrl: resumeFileUrl || null, // Make sure it's null if empty string
-          desiredJobTitle: formData.desiredJobTitle,
-          jobType: formData.jobType,
-          categories: formData.categories,
-          personalSummary: formData.personalSummary,
-          location: formData.location,
-          phone: formData.phone,
-          letEmployersFind: formData.letEmployersFind,
-          workExperience: workExperiences,
-          education: educations,
+          resumeFileUrl: resumeFileUrl || null,
+          desiredJobTitle,
+          jobType,
+          categories,
+          personalSummary,
+          location,
+          phone,
+          letEmployersFind,
+          // Work Experience and Education are now optional - only include if custom fields exist for them
+          ...(workExperiences.length > 0 && workExperiences[0].position ? { workExperience: workExperiences } : {}),
+          ...(educations.length > 0 && educations[0].degree ? { education: educations } : {}),
+          ...submissionData, // Include all custom field values
         }),
       });
 
@@ -286,641 +415,63 @@ function CreateResumePageContent() {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Upload Resume */}
-          <div>
-            <label htmlFor="resumeFile" className="block text-gray-700 font-medium mb-2">
-              Upload Resume <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="file"
-              id="resumeFile"
-              accept=".pdf,.doc,.docx"
-              onChange={handleFileChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {resumeFile && <p className="text-sm text-gray-600 mt-1">Selected: {resumeFile.name}</p>}
-          </div>
-
-          {/* Desired Job Title */}
-          <div>
-            <label htmlFor="desiredJobTitle" className="block text-gray-700 font-medium mb-2">
-              Desired Job Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="desiredJobTitle"
-              name="desiredJobTitle"
-              value={formData.desiredJobTitle}
-              onChange={handleInputChange}
-              required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Job Type and Categories */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="jobType" className="block text-gray-700 font-medium mb-2">
-                Job Type <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="jobType"
-                name="jobType"
-                value={formData.jobType}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Job Type</option>
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-                <option value="Contract">Contract</option>
-                <option value="Temporary">Temporary</option>
-                <option value="Internship">Internship</option>
-              </select>
+          {loadingFields ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600">Loading form fields...</p>
             </div>
-            <div className="relative categories-dropdown">
-              <label htmlFor="categories" className="block text-gray-700 font-medium mb-2">
-                Categories <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsCategoriesOpen(!isCategoriesOpen)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between"
-                >
-                  <span className={selectedCategories.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
-                    {selectedCategories.length === 0
-                      ? 'Click To Select'
-                      : selectedCategories.join(', ')}
-                  </span>
-                  <svg
-                    className={`w-5 h-5 transition-transform ${isCategoriesOpen ? 'transform rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {isCategoriesOpen && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {[
-                      'Accounting',
-                      'Admin-Clerical',
-                      'Automotive',
-                      'Banking',
-                      'Biotech',
-                      'Business Development',
-                      'Caregiving',
-                      'Construction',
-                      'Consultant',
-                      'Customer Service',
-                      'Design',
-                      'Education',
-                      'Energy',
-                      'Engineering',
-                      'Entertainment',
-                      'Executive',
-                      'Finance',
-                      'Food Service',
-                      'Healthcare',
-                      'Hospitality',
-                      'Human Resources',
-                      'Information Technology',
-                      'Insurance',
-                      'Legal',
-                      'Management',
-                      'Manufacturing',
-                      'Marketing',
-                      'Media',
-                      'Nurse',
-                      'Operations',
-                      'Other',
-                      'Real Estate',
-                      'Retail',
-                      'Sales',
-                      'Science',
-                      'Security',
-                      'Skilled Labor',
-                      'Social Services',
-                      'Transportation',
-                      'Warehouse',
-                    ].map((category) => (
-                      <label
-                        key={category}
-                        className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedCategories.includes(category)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              const newCategories = [...selectedCategories, category];
-                              setSelectedCategories(newCategories);
-                              setFormData((prev) => ({
-                                ...prev,
-                                categories: newCategories.join(', '),
-                              }));
-                            } else {
-                              const newCategories = selectedCategories.filter((c) => c !== category);
-                              setSelectedCategories(newCategories);
-                              setFormData((prev) => ({
-                                ...prev,
-                                categories: newCategories.join(', '),
-                              }));
-                            }
-                          }}
-                          className="mr-3 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span className="text-gray-700">{category}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {selectedCategories.length > 0 && (
-                <p className="text-sm text-gray-600 mt-1">
-                  {selectedCategories.length} categor{selectedCategories.length === 1 ? 'y' : 'ies'} selected
-                </p>
+          ) : (
+            <>
+              {/* Dynamic Custom Fields */}
+              {customFields.length > 0 && (
+                <div className="space-y-6">
+                  {customFields.map((field) => {
+                    const fieldKey = `customField_${field.id}`;
+                    // Map standard fields if custom fields match
+                    let mappedValue = formData[fieldKey];
+                    const captionLower = field.caption.toLowerCase();
+                    
+                    // Map to standard fields if they match
+                    if (captionLower.includes('desired') && captionLower.includes('job') && captionLower.includes('title') && !mappedValue) mappedValue = formData.desiredJobTitle;
+                    else if (captionLower.includes('job') && captionLower.includes('type') && !mappedValue) mappedValue = formData.jobType;
+                    else if (captionLower.includes('categor') && !mappedValue) mappedValue = formData.categories;
+                    else if (captionLower.includes('personal') && captionLower.includes('summary') && !mappedValue) mappedValue = formData.personalSummary;
+                    else if (captionLower.includes('location') && !mappedValue) mappedValue = formData.location;
+                    else if (captionLower.includes('phone') && !mappedValue) mappedValue = formData.phone;
+                    
+                    return (
+                      <DynamicFormField
+                        key={field.id}
+                        field={field}
+                        value={mappedValue}
+                        onChange={(value) => {
+                          handleCustomFieldChange(field.id, value);
+                          // Also update standard fields if they match
+                          const captionLower = field.caption.toLowerCase();
+                          if (captionLower.includes('desired') && captionLower.includes('job') && captionLower.includes('title')) setFormData(prev => ({ ...prev, desiredJobTitle: value }));
+                          else if (captionLower.includes('job') && captionLower.includes('type')) setFormData(prev => ({ ...prev, jobType: value }));
+                          else if (captionLower.includes('categor')) setFormData(prev => ({ ...prev, categories: value }));
+                          else if (captionLower.includes('personal') && captionLower.includes('summary')) setFormData(prev => ({ ...prev, personalSummary: value }));
+                          else if (captionLower.includes('location')) setFormData(prev => ({ ...prev, location: value }));
+                          else if (captionLower.includes('phone')) setFormData(prev => ({ ...prev, phone: value }));
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               )}
-            </div>
-          </div>
 
-          {/* Personal Summary */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Personal Summary <span className="text-red-500">*</span>
-            </label>
-            {/* Rich Text Editor Toolbar */}
-            <div className="border border-gray-300 rounded-t-lg bg-gray-50 p-2 flex items-center gap-1 flex-wrap">
-              <button
-                type="button"
-                onClick={() => applyFormat('bold')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm font-bold text-gray-700"
-                title="Bold"
-              >
-                B
-              </button>
-              <button
-                type="button"
-                onClick={() => applyFormat('italic')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm italic text-gray-700"
-                title="Italic"
-              >
-                I
-              </button>
-              <button
-                type="button"
-                onClick={() => applyFormat('underline')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm underline text-gray-700"
-                title="Underline"
-              >
-                U
-              </button>
-              <div className="w-px h-6 bg-gray-300 mx-1" />
-              <button
-                type="button"
-                onClick={() => {
-                  const url = prompt('Enter URL:');
-                  if (url) applyFormat('createLink', url);
-                }}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Insert Link"
-              >
-                🔗
-              </button>
-              <button
-                type="button"
-                onClick={() => applyFormat('insertUnorderedList')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Bullet List"
-              >
-                •
-              </button>
-              <button
-                type="button"
-                onClick={() => applyFormat('insertOrderedList')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Numbered List"
-              >
-                1.
-              </button>
-              <div className="w-px h-6 bg-gray-300 mx-1" />
-              <button
-                type="button"
-                onClick={() => applyFormat('justifyLeft')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Align Left"
-              >
-                ⬅
-              </button>
-              <button
-                type="button"
-                onClick={() => applyFormat('justifyCenter')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Align Center"
-              >
-                ⬌
-              </button>
-              <button
-                type="button"
-                onClick={() => applyFormat('justifyRight')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Align Right"
-              >
-                ➡
-              </button>
-              <button
-                type="button"
-                onClick={() => applyFormat('justifyFull')}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Justify"
-              >
-                ⬌⬌
-              </button>
-              <div className="w-px h-6 bg-gray-300 mx-1" />
-              <button
-                type="button"
-                onClick={() => {
-                  const url = prompt('Enter image URL:');
-                  if (url) {
-                    document.execCommand('insertImage', false, url);
-                    handleEditorInput(personalSummaryRef, 'personalSummary');
-                  }
-                }}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Insert Image"
-              >
-                🖼️
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const url = prompt('Enter video URL:');
-                  if (url) {
-                    const iframe = `<iframe src="${url}" width="560" height="315"></iframe>`;
-                    document.execCommand('insertHTML', false, iframe);
-                    handleEditorInput(personalSummaryRef, 'personalSummary');
-                  }
-                }}
-                className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                title="Insert Video"
-              >
-                ▶️
-              </button>
-            </div>
-            {/* Rich Text Editor Content */}
-            <div
-              ref={personalSummaryRef}
-              contentEditable
-              onInput={() => handleEditorInput(personalSummaryRef, 'personalSummary')}
-              className="w-full min-h-[200px] px-4 py-3 border border-t-0 border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              style={{ whiteSpace: 'pre-wrap' }}
-            />
-          </div>
-
-          {/* Location and Phone */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="location" className="block text-gray-700 font-medium mb-2">
-                Location <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label htmlFor="phone" className="block text-gray-700 font-medium mb-2">
-                Phone <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* Let Employers Find My Resume */}
-          <div>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="letEmployersFind"
-                checked={formData.letEmployersFind}
-                onChange={handleInputChange}
-                className="mr-2 w-4 h-4"
-              />
-              <span className="text-gray-700 font-medium">Let Employers Find My Resume <span className="text-red-500">*</span></span>
-            </label>
-          </div>
-
-          {/* Work Experience */}
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Work Experience <span className="text-red-500">*</span>
-            </h2>
-            {workExperiences.map((workExp, index) => (
-              <div key={index} className="mb-6 p-4 border border-gray-200 rounded-lg">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Experience {index + 1}</h3>
-                  <div className="flex gap-2">
-                    {workExperiences.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeWorkExperience(index)}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
-                      >
-                        Remove
-                      </button>
-                    )}
-                    {index === workExperiences.length - 1 && (
-                      <button
-                        type="button"
-                        onClick={addWorkExperience}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
-                      >
-                        + Add Work Experience
-                      </button>
-                    )}
-                  </div>
+              {/* Message when no custom fields are configured */}
+              {customFields.length === 0 && !loadingFields && (
+                <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-gray-600 text-lg mb-2">No resume fields have been configured yet.</p>
+                  <p className="text-gray-500 text-sm">Please contact an administrator to set up the resume form fields.</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">Position</label>
-                    <input
-                      type="text"
-                      value={workExp.position}
-                      onChange={(e) => handleWorkExpChange(index, 'position', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">Company</label>
-                    <input
-                      type="text"
-                      value={workExp.company}
-                      onChange={(e) => handleWorkExpChange(index, 'company', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">From</label>
-                    <input
-                      type="date"
-                      value={workExp.from}
-                      onChange={(e) => handleWorkExpChange(index, 'from', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">To</label>
-                    <input
-                      type="date"
-                      value={workExp.to}
-                      onChange={(e) => handleWorkExpChange(index, 'to', e.target.value)}
-                      disabled={workExp.present}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                    />
-                    <label className="flex items-center mt-2">
-                      <input
-                        type="checkbox"
-                        checked={workExp.present}
-                        onChange={(e) => handleWorkExpChange(index, 'present', e.target.checked)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">Present</span>
-                    </label>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-medium mb-2">Description</label>
-                  {/* Rich Text Editor Toolbar for Description */}
-                  <div className="border border-gray-300 rounded-t-lg bg-gray-50 p-2 flex items-center gap-1 flex-wrap mb-0">
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('bold', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm font-bold text-gray-700"
-                      title="Bold"
-                    >
-                      B
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('italic', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm italic text-gray-700"
-                      title="Italic"
-                    >
-                      I
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('underline', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm underline text-gray-700"
-                      title="Underline"
-                    >
-                      U
-                    </button>
-                    <div className="w-px h-6 bg-gray-300 mx-1" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const url = prompt('Enter URL:');
-                        if (url) applyFormat('createLink', url, workExpDescRefs.current[index]);
-                      }}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Insert Link"
-                    >
-                      🔗
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('insertUnorderedList', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Bullet List"
-                    >
-                      •
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('insertOrderedList', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Numbered List"
-                    >
-                      1.
-                    </button>
-                    <div className="w-px h-6 bg-gray-300 mx-1" />
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('justifyLeft', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Align Left"
-                    >
-                      ⬅
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('justifyCenter', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Align Center"
-                    >
-                      ⬌
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('justifyRight', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Align Right"
-                    >
-                      ➡
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyFormat('justifyFull', undefined, workExpDescRefs.current[index])}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Justify"
-                    >
-                      ⬌⬌
-                    </button>
-                    <div className="w-px h-6 bg-gray-300 mx-1" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const url = prompt('Enter image URL:');
-                        if (url) {
-                          document.execCommand('insertImage', false, url);
-                          handleWorkExpDescInput(index);
-                        }
-                      }}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Insert Image"
-                    >
-                      🖼️
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const url = prompt('Enter video URL:');
-                        if (url) {
-                          const iframe = `<iframe src="${url}" width="560" height="315"></iframe>`;
-                          document.execCommand('insertHTML', false, iframe);
-                          handleWorkExpDescInput(index);
-                        }
-                      }}
-                      className="px-3 py-1.5 hover:bg-gray-200 rounded text-sm"
-                      title="Insert Video"
-                    >
-                      ▶️
-                    </button>
-                  </div>
-                  {/* Rich Text Editor Content */}
-                  <div
-                    ref={(el) => { workExpDescRefs.current[index] = el; }}
-                    contentEditable
-                    onInput={() => handleWorkExpDescInput(index)}
-                    className="w-full min-h-[150px] px-4 py-3 border border-t-0 border-gray-300 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ whiteSpace: 'pre-wrap' }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Education */}
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Education <span className="text-red-500">*</span>
-            </h2>
-            {educations.map((edu, index) => (
-              <div key={index} className="mb-6 p-4 border border-gray-200 rounded-lg">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Education {index + 1}</h3>
-                  <div className="flex gap-2">
-                    {educations.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeEducation(index)}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
-                      >
-                        Remove
-                      </button>
-                    )}
-                    {index === educations.length - 1 && (
-                      <button
-                        type="button"
-                        onClick={addEducation}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
-                      >
-                        + Add Education
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">Degree or Specialty</label>
-                    <input
-                      type="text"
-                      value={edu.degree}
-                      onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">University or Institution</label>
-                    <input
-                      type="text"
-                      value={edu.institution}
-                      onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">From</label>
-                    <input
-                      type="date"
-                      value={edu.from}
-                      onChange={(e) => handleEducationChange(index, 'from', e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium mb-2">To</label>
-                    <input
-                      type="date"
-                      value={edu.to}
-                      onChange={(e) => handleEducationChange(index, 'to', e.target.value)}
-                      disabled={edu.present}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                    />
-                    <label className="flex items-center mt-2">
-                      <input
-                        type="checkbox"
-                        checked={edu.present}
-                        onChange={(e) => handleEducationChange(index, 'present', e.target.checked)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">Present</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </>
+          )}
 
           {/* Submit Button */}
-          <div className="flex justify-center">
+          <div className="flex justify-center mt-8">
             <button
               type="submit"
               disabled={loading}

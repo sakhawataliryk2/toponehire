@@ -45,6 +45,38 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    // Fetch custom fields configuration for RESUME context
+    const customFields = await prisma.customField.findMany({
+      where: {
+        context: 'RESUME',
+        hidden: false,
+      },
+      orderBy: { order: 'asc' },
+    });
+
+    // Validate required custom fields
+    const missingFields: string[] = [];
+
+    // Extract values from form data (could be customField_<id> or standard field names)
+    for (const field of customFields) {
+      if (field.required) {
+        const fieldKey = `customField_${field.id}`;
+        const value = body[fieldKey] || body[field.caption.toLowerCase().replace(/\s+/g, '')];
+        
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          missingFields.push(field.caption);
+        }
+      }
+    }
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `Missing required fields: ${missingFields.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
     const {
       jobSeekerId,
       resumeFileUrl,
@@ -59,36 +91,57 @@ export async function POST(request: NextRequest) {
       education,
     } = body;
 
-    // Validate required fields
-    if (!jobSeekerId || !desiredJobTitle || !jobType || !categories || !personalSummary || !location || !phone) {
+    // jobSeekerId is always required
+    if (!jobSeekerId) {
       return NextResponse.json(
-        { 
-          error: 'Missing required fields',
-          missing: {
-            jobSeekerId: !jobSeekerId,
-            desiredJobTitle: !desiredJobTitle,
-            jobType: !jobType,
-            categories: !categories,
-            personalSummary: !personalSummary,
-            location: !location,
-            phone: !phone,
-          }
-        },
+        { error: 'Job seeker ID is required' },
         { status: 400 }
       );
     }
+
+    // Extract standard fields from custom field values (map by caption)
+    let extractedDesiredJobTitle = '';
+    let extractedJobType = '';
+    let extractedCategories = '';
+    let extractedPersonalSummary = '';
+    let extractedLocation = '';
+    let extractedPhone = '';
+    let extractedLetEmployersFind = true;
+
+    for (const field of customFields) {
+      const fieldKey = `customField_${field.id}`;
+      const value = body[fieldKey] || body[field.caption.toLowerCase().replace(/\s+/g, '')];
+      const captionLower = field.caption.toLowerCase();
+
+      if (captionLower.includes('desired') && captionLower.includes('job') && captionLower.includes('title')) extractedDesiredJobTitle = String(value || '');
+      else if (captionLower.includes('job') && captionLower.includes('type')) extractedJobType = String(value || '');
+      else if (captionLower.includes('categor')) extractedCategories = String(value || '');
+      else if (captionLower.includes('personal') && captionLower.includes('summary')) extractedPersonalSummary = String(value || '');
+      else if (captionLower.includes('location')) extractedLocation = String(value || '');
+      else if (captionLower.includes('phone')) extractedPhone = String(value || '');
+      else if (captionLower.includes('employer') && captionLower.includes('find')) extractedLetEmployersFind = Boolean(value);
+    }
+
+    // Use extracted values or fall back to direct body values
+    const finalDesiredJobTitle = extractedDesiredJobTitle || desiredJobTitle || '';
+    const finalJobType = extractedJobType || jobType || '';
+    const finalCategories = extractedCategories || categories || '';
+    const finalPersonalSummary = extractedPersonalSummary || personalSummary || '';
+    const finalLocation = extractedLocation || location || '';
+    const finalPhone = extractedPhone || phone || '';
+    const finalLetEmployersFind = letEmployersFind !== undefined ? letEmployersFind : extractedLetEmployersFind;
 
     // Prepare resume data - file upload is optional
     const resumeData: any = {
       jobSeekerId,
       resumeFileUrl: resumeFileUrl && resumeFileUrl.trim() !== '' ? resumeFileUrl : null,
-      desiredJobTitle,
-      jobType,
-      categories,
-      personalSummary,
-      location,
-      phone,
-      letEmployersFind: letEmployersFind !== undefined ? letEmployersFind : true,
+      desiredJobTitle: finalDesiredJobTitle,
+      jobType: finalJobType,
+      categories: finalCategories,
+      personalSummary: finalPersonalSummary,
+      location: finalLocation,
+      phone: finalPhone,
+      letEmployersFind: finalLetEmployersFind,
       workExperience: workExperience && Array.isArray(workExperience) && workExperience.length > 0 
         ? JSON.stringify(workExperience) 
         : null,
