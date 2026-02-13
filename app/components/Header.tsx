@@ -137,7 +137,7 @@ export default function Header({ activePage = '' }: HeaderProps) {
             >
               Companies
             </Link>
-            <Link href="#" className="text-gray-700 hover:text-yellow-500 font-medium text-sm">
+            <Link href="/employer-products" className="text-gray-700 hover:text-yellow-500 font-medium text-sm">
               Post a Job
             </Link>
                 <Link href="/add-listing?listing_type_id=Resume" className="text-gray-700 hover:text-yellow-500 font-medium text-sm">

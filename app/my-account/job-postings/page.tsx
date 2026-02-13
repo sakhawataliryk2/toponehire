@@ -92,7 +92,7 @@ export default function JobPostingsPage() {
           {/* Job Postings Content */}
           <div className="mb-6 flex justify-end">
             <Link
-              href="/admin/job-board/job-postings/add"
+              href="/my-account/job-postings/add"
               className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg font-medium transition-colors"
             >
               Post New Job
@@ -104,7 +104,7 @@ export default function JobPostingsPage() {
               <div className="p-12 text-center">
                 <p className="text-gray-600 mb-4">You haven't posted any jobs yet.</p>
                 <Link
-                  href="/admin/job-board/job-postings/add"
+                  href="/my-account/job-postings/add"
                   className="inline-block px-6 py-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-lg font-medium transition-colors"
                 >
                   Post Your First Job
