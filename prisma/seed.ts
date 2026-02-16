@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type FieldType } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -120,6 +120,7 @@ async function main() {
       await prisma.customField.create({
         data: {
           ...field,
+          type: field.type as FieldType,
           context: 'JOB_SEEKER',
           hidden: false,
         },
@@ -152,6 +153,7 @@ async function main() {
       await prisma.customField.create({
         data: {
           ...field,
+          type: field.type as FieldType,
           context: 'EMPLOYER',
           hidden: false,
         },
