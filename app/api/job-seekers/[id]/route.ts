@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../../../../lib/prisma';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -33,16 +34,31 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { firstName, lastName, phone, location } = body;
+    const { firstName, lastName, phone, location, currentPassword, newPassword } = body;
+
+    const existing = await prisma.jobSeeker.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Job seeker not found' }, { status: 404 });
+    }
+
+    const updateData: { firstName?: string; lastName?: string; phone?: string | null; location?: string | null; password?: string } = {
+      firstName: firstName !== undefined ? firstName : undefined,
+      lastName: lastName !== undefined ? lastName : undefined,
+      phone: phone !== undefined ? phone || null : undefined,
+      location: location !== undefined ? location || null : undefined,
+    };
+
+    if (currentPassword != null && newPassword != null && newPassword.trim() !== '') {
+      const valid = await bcrypt.compare(currentPassword, existing.password);
+      if (!valid) {
+        return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
+      }
+      updateData.password = await bcrypt.hash(newPassword.trim(), 10);
+    }
 
     const jobSeeker = await prisma.jobSeeker.update({
       where: { id },
-      data: {
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        phone: phone || undefined,
-        location: location || undefined,
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,

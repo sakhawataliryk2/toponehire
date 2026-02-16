@@ -93,6 +93,7 @@ export default function JobListings() {
           jobs.map((job) => (
             <JobCard
               key={job.id}
+              jobId={job.id}
               date={formatJobDate(job.postingDate)}
               title={job.title}
               description={job.jobDescription}

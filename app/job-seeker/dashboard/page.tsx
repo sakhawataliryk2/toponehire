@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 
@@ -63,33 +64,38 @@ export default function JobSeekerDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Browse Jobs</h3>
-              <p className="text-gray-600 mb-4">Search and apply for jobs</p>
-              <a
-                href="/jobs"
-                className="inline-block px-4 py-2 bg-blue-400 text-white rounded hover:bg-blue-500 transition-colors"
-              >
-                Browse Jobs
-              </a>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Link href="/my-listings/saved-jobs" className="bg-purple-50 border border-purple-200 rounded-lg p-6 block hover:shadow-md transition-shadow">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Saved Jobs</h3>
+              <p className="text-gray-600 mb-4">View and manage your saved jobs</p>
+              <span className="inline-block px-4 py-2 bg-purple-400 text-white rounded hover:bg-purple-500 transition-colors">
+                View Saved Jobs
+              </span>
+            </Link>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <Link href="/my-listings/applications" className="bg-green-50 border border-green-200 rounded-lg p-6 block hover:shadow-md transition-shadow">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">My Applications</h3>
               <p className="text-gray-600 mb-4">View your job applications</p>
-              <button className="px-4 py-2 bg-green-400 text-white rounded hover:bg-green-500 transition-colors">
+              <span className="inline-block px-4 py-2 bg-green-400 text-white rounded hover:bg-green-500 transition-colors">
                 View Applications
-              </button>
-            </div>
+              </span>
+            </Link>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <Link href="/my-listings/resume" className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 block hover:shadow-md transition-shadow">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">My Resume</h3>
               <p className="text-gray-600 mb-4">Upload or update your resume</p>
-              <button className="px-4 py-2 bg-yellow-400 text-gray-900 rounded hover:bg-yellow-500 transition-colors">
+              <span className="inline-block px-4 py-2 bg-yellow-400 text-gray-900 rounded hover:bg-yellow-500 transition-colors">
                 Manage Resume
-              </button>
-            </div>
+              </span>
+            </Link>
+
+            <Link href="/my-listings/account-settings" className="bg-gray-50 border border-gray-200 rounded-lg p-6 block hover:shadow-md transition-shadow">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Account Settings</h3>
+              <p className="text-gray-600 mb-4">Update your profile and credentials</p>
+              <span className="inline-block px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors">
+                Manage Settings
+              </span>
+            </Link>
           </div>
         </div>
       </div>

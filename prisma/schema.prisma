@@ -77,9 +77,22 @@ model JobSeeker {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  resumes   Resume[]
+  resumes    Resume[]
+  savedJobs  SavedJob[]
 
   @@map("job_seekers")
+}
+
+model SavedJob {
+  id          String   @id @default(cuid())
+  jobSeekerId String
+  jobId       String
+  createdAt   DateTime @default(now())
+
+  jobSeeker   JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  @@unique([jobSeekerId, jobId])
+  @@map("saved_jobs")
 }
 
 model Resume {
@@ -103,6 +116,20 @@ model Resume {
   jobSeeker           JobSeeker @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
 
   @@map("resumes")
+}
+
+model JobAlert {
+  id         String   @id @default(cuid())
+  email      String
+  keywords   String?  @db.Text
+  location   String?  @db.Text
+  frequency  String   @default("Daily") // Daily | Weekly | Monthly
+  lastSentAt DateTime?
+  status     String   @default("Active") // Active | Inactive
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("job_alerts")
 }
 
 // ---- eCommerce ----

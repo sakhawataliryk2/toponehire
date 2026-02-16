@@ -12,6 +12,8 @@ export default function MyAccountPage() {
   const [employer, setEmployer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('Last 30 days');
+  const [stats, setStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
     const auth = localStorage.getItem('employerAuth');
@@ -25,6 +27,31 @@ export default function MyAccountPage() {
     }
   }, [router]);
 
+  // Fetch employer statistics
+  const fetchStats = async () => {
+    if (!employer) return;
+    
+    setLoadingStats(true);
+    try {
+      const response = await fetch(`/api/employers/${employer.id}/stats?timeRange=${encodeURIComponent(timeRange)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.stats);
+      } else {
+        console.error('Failed to fetch stats');
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  // Fetch stats when employer or timeRange changes
+  useEffect(() => {
+    fetchStats();
+  }, [employer, timeRange]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -33,59 +60,71 @@ export default function MyAccountPage() {
     );
   }
 
-  const stats = [
-    {
-      label: 'Jobs Posted',
-      value: '0',
-      icon: (
-        <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      ),
-      color: 'blue',
-    },
-    {
-      label: 'Job Views',
-      value: '0',
-      icon: (
-        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-      ),
-      color: 'red',
-    },
-    {
-      label: 'Applications',
-      value: '0',
-      icon: (
-        <svg className="w-8 h-8 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      color: 'teal',
-    },
-    {
-      label: 'Apply Clicks',
-      value: '0',
-      icon: (
-        <svg className="w-8 h-8 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-        </svg>
-      ),
-      color: 'teal',
-    },
-    {
-      label: 'Apply Rate',
-      value: '0.00%',
-      icon: (
-        <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-      color: 'purple',
-    },
-  ];
+  const getStatsArray = () => {
+    const defaultStats = {
+      jobsPosted: 0,
+      jobViews: 0,
+      applications: 0,
+      applyClicks: 0,
+      applyRate: '0.00%',
+    };
+    
+    const currentStats = stats || defaultStats;
+    
+    return [
+      {
+        label: 'Jobs Posted',
+        value: currentStats.jobsPosted.toString(),
+        icon: (
+          <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        ),
+        color: 'blue',
+      },
+      {
+        label: 'Job Views',
+        value: currentStats.jobViews.toString(),
+        icon: (
+          <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+        ),
+        color: 'red',
+      },
+      {
+        label: 'Applications',
+        value: currentStats.applications.toString(),
+        icon: (
+          <svg className="w-8 h-8 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        ),
+        color: 'teal',
+      },
+      {
+        label: 'Apply Clicks',
+        value: currentStats.applyClicks.toString(),
+        icon: (
+          <svg className="w-8 h-8 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+          </svg>
+        ),
+        color: 'teal',
+      },
+      {
+        label: 'Apply Rate',
+        value: currentStats.applyRate,
+        icon: (
+          <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        ),
+        color: 'purple',
+      },
+    ];
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -165,8 +204,13 @@ export default function MyAccountPage() {
 
               {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
-                {stats.map((stat, index) => (
-                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 text-center">
+                {getStatsArray().map((stat, index) => (
+                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-6 text-center relative">
+                    {loadingStats && (
+                      <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center rounded-lg">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+                      </div>
+                    )}
                     <div className="flex justify-center mb-3">
                       {stat.icon}
                     </div>

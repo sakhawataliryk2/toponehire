@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import JobSearchBar from '../components/JobSearchBar';
@@ -24,6 +24,40 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchLocation, setSearchLocation] = useState('');
+  const [jobSeeker, setJobSeeker] = useState<{ id: string } | null>(null);
+  const [savedJobIds, setSavedJobIds] = useState<Set<string>>(new Set());
+  const [savingJobId, setSavingJobId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const auth = typeof window !== 'undefined' ? localStorage.getItem('jobSeekerAuth') : null;
+    const userStr = typeof window !== 'undefined' ? localStorage.getItem('jobSeekerUser') : null;
+    if (auth && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setJobSeeker(user);
+      } catch {
+        setJobSeeker(null);
+      }
+    } else {
+      setJobSeeker(null);
+    }
+  }, []);
+
+  const fetchSavedJobs = useCallback(async (jobSeekerId: string) => {
+    try {
+      const res = await fetch(`/api/job-seekers/saved-jobs?jobSeekerId=${encodeURIComponent(jobSeekerId)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSavedJobIds(new Set(data.savedJobIds ?? []));
+      }
+    } catch (err) {
+      console.error('Error fetching saved jobs:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (jobSeeker?.id) fetchSavedJobs(jobSeeker.id);
+  }, [jobSeeker?.id, fetchSavedJobs]);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -116,11 +150,55 @@ export default function JobsPage() {
                 {filteredJobs.map((job) => (
                   <JobCard
                     key={job.id}
+                    jobId={job.id}
                     date={formatDate(job.postingDate)}
                     title={job.title}
                     description={stripHtml(job.jobDescription)}
                     company={job.employer.toUpperCase()}
                     location={job.location.toUpperCase()}
+                    isSaved={jobSeeker ? savedJobIds.has(job.id) : undefined}
+                    saving={savingJobId === job.id}
+                    onSaveToggle={
+                      jobSeeker
+                        ? async (jobId, save) => {
+                            setSavingJobId(jobId);
+                            try {
+                              if (save) {
+                                const res = await fetch('/api/job-seekers/saved-jobs', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ jobSeekerId: jobSeeker.id, jobId }),
+                                });
+                                const data = await res.json().catch(() => ({}));
+                                if (res.ok && data.saved !== false) {
+                                  setSavedJobIds((prev) => new Set([...prev, jobId]));
+                                } else {
+                                  if (jobSeeker.id) fetchSavedJobs(jobSeeker.id);
+                                }
+                              } else {
+                                const res = await fetch(
+                                  `/api/job-seekers/saved-jobs?jobSeekerId=${encodeURIComponent(jobSeeker.id)}&jobId=${encodeURIComponent(jobId)}`,
+                                  { method: 'DELETE' }
+                                );
+                                if (res.ok) {
+                                  setSavedJobIds((prev) => {
+                                    const next = new Set(prev);
+                                    next.delete(jobId);
+                                    return next;
+                                  });
+                                } else if (jobSeeker.id) {
+                                  fetchSavedJobs(jobSeeker.id);
+                                }
+                              }
+                            } catch (err) {
+                              console.error('Failed to update saved job:', err);
+                              if (jobSeeker?.id) fetchSavedJobs(jobSeeker.id);
+                            } finally {
+                              setSavingJobId(null);
+                            }
+                          }
+                        : undefined
+                    }
                   />
                 ))}
               </div>
