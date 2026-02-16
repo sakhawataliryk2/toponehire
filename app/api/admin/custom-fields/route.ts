@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const where: Prisma.CustomFieldWhereInput = {};
     if (contextParam && VALID_CONTEXTS.includes(contextParam as (typeof VALID_CONTEXTS)[number])) {
-      where.context = contextParam as Prisma.FieldContext;
+      where.context = contextParam as 'EMPLOYER' | 'JOB_SEEKER' | 'RESUME' | 'APPLICATION' | 'JOB';
     }
 
     const fields = await prisma.customField.findMany({
