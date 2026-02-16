@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../../../lib/prisma';
+
+const VALID_CONTEXTS = ['EMPLOYER', 'JOB_SEEKER', 'RESUME', 'APPLICATION', 'JOB'] as const;
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const context = searchParams.get('context'); // EMPLOYER, JOB_SEEKER, RESUME, APPLICATION
+    const contextParam = searchParams.get('context');
 
-    const where: { context?: string } = {};
-    if (context && ['EMPLOYER', 'JOB_SEEKER', 'RESUME', 'APPLICATION', 'JOB'].includes(context)) {
-      where.context = context;
+    const where: Prisma.CustomFieldWhereInput = {};
+    if (contextParam && VALID_CONTEXTS.includes(contextParam as (typeof VALID_CONTEXTS)[number])) {
+      where.context = contextParam as Prisma.FieldContext;
     }
 
     const fields = await prisma.customField.findMany({
