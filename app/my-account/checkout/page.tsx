@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const productId = searchParams.get('product');
@@ -102,4 +102,27 @@ export default function CheckoutPage() {
   }
 
   return null;
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white">
+          <Header activePage="my-account" />
+          <div className="container mx-auto px-4 py-12">
+            <div className="max-w-2xl mx-auto text-center">
+              <div className="mb-4">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500"></div>
+              </div>
+              <p className="text-gray-600">Redirecting to secure checkout...</p>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      }
+    >
+      <CheckoutPageContent />
+    </Suspense>
+  );
 }

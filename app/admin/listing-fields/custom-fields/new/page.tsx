@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AdminLayout from '../../../components/AdminLayout';
@@ -32,7 +32,7 @@ const contexts = [
   { value: 'APPLICATION', label: 'Application' },
 ];
 
-export default function NewCustomFieldPage() {
+function NewCustomFieldForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [saving, setSaving] = useState(false);
@@ -245,5 +245,20 @@ export default function NewCustomFieldPage() {
         </form>
       </div>
     </AdminLayout>
+  );
+}
+
+export default function NewCustomFieldPage() {
+  return (
+    <Suspense fallback={
+      <AdminLayout>
+        <div className="p-6">
+          <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+          <div className="mt-6 h-96 bg-gray-100 rounded-lg animate-pulse" />
+        </div>
+      </AdminLayout>
+    }>
+      <NewCustomFieldForm />
+    </Suspense>
   );
 }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../../../components/Header';
 import Footer from '../../../components/Footer';
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -89,5 +89,26 @@ export default function CheckoutSuccessPage() {
       </div>
       <Footer />
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white">
+          <Header activePage="my-account" />
+          <div className="container mx-auto px-4 py-12">
+            <div className="max-w-2xl mx-auto text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mb-4"></div>
+              <p className="text-gray-600">Processing your payment...</p>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      }
+    >
+      <CheckoutSuccessPageContent />
+    </Suspense>
   );
 }
