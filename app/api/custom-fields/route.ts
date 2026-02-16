@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 
+const VALID_CONTEXTS = ['EMPLOYER', 'JOB_SEEKER', 'RESUME', 'APPLICATION', 'JOB'] as const;
+
 // Public endpoint - no auth required
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const context = searchParams.get('context'); // EMPLOYER, JOB_SEEKER, RESUME, APPLICATION
+    const contextParam = searchParams.get('context');
 
-    if (!context || !['EMPLOYER', 'JOB_SEEKER', 'RESUME', 'APPLICATION', 'JOB'].includes(context)) {
+    if (!contextParam || !VALID_CONTEXTS.includes(contextParam as (typeof VALID_CONTEXTS)[number])) {
       return NextResponse.json({ error: 'Invalid context' }, { status: 400 });
     }
 
     const fields = await prisma.customField.findMany({
       where: {
-        context,
+        context: contextParam as 'EMPLOYER' | 'JOB_SEEKER' | 'RESUME' | 'APPLICATION' | 'JOB',
         hidden: false, // Only return visible fields
       },
       orderBy: { order: 'asc' },
