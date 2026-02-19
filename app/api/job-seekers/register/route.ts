@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 import bcrypt from 'bcryptjs';
+import { verifyRecaptchaToken } from '../../../../lib/recaptcha';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const recaptchaToken = body?.recaptchaToken as string | undefined;
+
+    const recaptchaOk = await verifyRecaptchaToken(recaptchaToken, 'REGISTER');
+    if (!recaptchaOk) {
+      return NextResponse.json(
+        { error: 'reCAPTCHA verification failed' },
+        { status: 400 }
+      );
+    }
     
     // Fetch custom fields configuration for JOB_SEEKER context
     const customFields = await prisma.customField.findMany({

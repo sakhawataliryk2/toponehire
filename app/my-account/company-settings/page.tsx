@@ -10,6 +10,7 @@ export default function CompanySettingsPage() {
   const router = useRouter();
   const [employer, setEmployer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [jobsPosted, setJobsPosted] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     companyName: '',
     website: '',
@@ -28,14 +29,46 @@ export default function CompanySettingsPage() {
     } else {
       const employerObj = JSON.parse(employerData);
       setEmployer(employerObj);
-      setFormData({
-        companyName: employerObj.companyName || '',
-        website: employerObj.website || '',
-        location: employerObj.location || '',
-        phone: employerObj.phone || '',
-        companyDescription: employerObj.companyDescription || '',
-      });
-      setLoading(false);
+
+      // Fetch the latest employer data from the database
+      const fetchEmployerAndStats = async () => {
+        try {
+          const [employerRes, statsRes] = await Promise.all([
+            fetch(`/api/employers/${employerObj.id}`),
+            fetch(`/api/employers/${employerObj.id}/stats?timeRange=All%20time`),
+          ]);
+
+          if (employerRes.ok) {
+            const employerJson = await employerRes.json();
+            const employerFromDb = employerJson.employer;
+            if (employerFromDb) {
+              setFormData({
+                companyName: employerFromDb.companyName || '',
+                website: employerFromDb.website || '',
+                location: employerFromDb.location || '',
+                phone: employerFromDb.phone || '',
+                companyDescription: employerFromDb.companyDescription || '',
+              });
+              // Keep local storage in sync with latest DB data
+              localStorage.setItem('employerUser', JSON.stringify(employerFromDb));
+              setEmployer(employerFromDb);
+            }
+          }
+
+          if (statsRes.ok) {
+            const statsJson = await statsRes.json();
+            if (statsJson?.stats?.jobsPosted !== undefined) {
+              setJobsPosted(statsJson.stats.jobsPosted);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching employer/company stats:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchEmployerAndStats();
     }
   }, [router]);
 
@@ -88,6 +121,22 @@ export default function CompanySettingsPage() {
       <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-24 2xl:px-32 py-12">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-8 text-center">My Account</h1>
+
+          {/* Company summary */}
+          <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <p className="text-sm text-gray-500 mb-1">Company</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {formData.companyName || employer?.companyName || '—'}
+              </p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <p className="text-sm text-gray-500 mb-1">Jobs Posted (all time)</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {jobsPosted !== null ? jobsPosted : '—'}
+              </p>
+            </div>
+          </div>
 
           {/* Tabs Navigation */}
           <div className="flex justify-center border-b border-gray-200 mb-8">

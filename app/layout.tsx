@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,6 +28,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Script
+          src="https://www.google.com/recaptcha/enterprise.js?render=6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg"
+          strategy="afterInteractive"
+        />
         {children}
       </body>
     </html>

@@ -15,6 +15,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const RECAPTCHA_SITE_KEY = '6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg';
+
   useEffect(() => {
     // Check if user is already logged in
     const employerAuth = localStorage.getItem('employerAuth');
@@ -33,6 +35,16 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      let recaptchaToken: string | null = null;
+      if (typeof window !== 'undefined' && (window as any).grecaptcha?.enterprise) {
+        await new Promise<void>((resolve, reject) => {
+          (window as any).grecaptcha.enterprise.ready(() => resolve());
+        });
+        recaptchaToken = await (window as any).grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
+          action: 'LOGIN',
+        });
+      }
+
       const endpoint = userType === 'employer' 
         ? '/api/employers/login' 
         : '/api/job-seekers/login';
@@ -42,7 +54,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, recaptchaToken }),
       });
 
       const contentType = response.headers.get('content-type');
@@ -56,6 +68,10 @@ export default function LoginPage() {
         
         localStorage.setItem(authKey, 'true');
         localStorage.setItem(userKey, JSON.stringify(data.user));
+
+        if (typeof window !== 'undefined') {
+          alert('Sign in successful!');
+        }
 
         // Redirect based on user type
         if (userType === 'employer') {

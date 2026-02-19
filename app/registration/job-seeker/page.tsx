@@ -77,6 +77,8 @@ export default function JobSeekerRegistrationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const RECAPTCHA_SITE_KEY = '6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -89,6 +91,15 @@ export default function JobSeekerRegistrationPage() {
     }
     
     try {
+      let recaptchaToken: string | null = null;
+      if (typeof window !== 'undefined' && (window as any).grecaptcha?.enterprise) {
+        await new Promise<void>((resolve) => {
+          (window as any).grecaptcha.enterprise.ready(() => resolve());
+        });
+        recaptchaToken = await (window as any).grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
+          action: 'REGISTER',
+        });
+      }
       // Collect all custom field values
       const submissionData: Record<string, any> = {};
       
@@ -112,12 +123,16 @@ export default function JobSeekerRegistrationPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(submissionData),
+        body: JSON.stringify({
+          ...submissionData,
+          recaptchaToken,
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        alert('Registration successful! Your account has been created.');
         // Auto-login the user
         localStorage.setItem('jobSeekerAuth', 'true');
         localStorage.setItem('jobSeekerUser', JSON.stringify(data.jobSeeker));

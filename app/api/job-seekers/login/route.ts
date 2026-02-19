@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { verifyRecaptchaToken } from '../../../../lib/recaptcha';
 
 function jsonResponse(body: object, status: number) {
   return new Response(JSON.stringify(body), {
@@ -20,6 +21,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const email = body?.email;
     const password = body?.password;
+    const recaptchaToken = body?.recaptchaToken as string | undefined;
+
+    const recaptchaOk = await verifyRecaptchaToken(recaptchaToken, 'LOGIN');
+    if (!recaptchaOk) {
+      return jsonResponse({ error: 'reCAPTCHA verification failed' }, 400);
+    }
 
     if (!email || !password) {
       return jsonResponse({ error: 'Email and password are required' }, 400);
