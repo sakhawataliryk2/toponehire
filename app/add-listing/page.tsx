@@ -33,6 +33,8 @@ interface CustomField {
   options?: string | null;
 }
 
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? '6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg';
+
 function CreateResumePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -266,6 +268,22 @@ function CreateResumePageContent() {
     setLoading(true);
 
     try {
+      // Get reCAPTCHA token before submitting
+      let recaptchaToken: string | null = null;
+      if (typeof window !== 'undefined' && (window as any).grecaptcha?.enterprise) {
+        await new Promise<void>((resolve) => {
+          (window as any).grecaptcha.enterprise.ready(() => resolve());
+        });
+        recaptchaToken = await (window as any).grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
+          action: 'SUBMIT',
+        });
+      }
+      if (!recaptchaToken) {
+        alert('reCAPTCHA verification failed. Please refresh the page and try again.');
+        setLoading(false);
+        return;
+      }
+
       // Collect all custom field values
       const submissionData: Record<string, any> = {};
       
@@ -356,6 +374,7 @@ function CreateResumePageContent() {
         },
         body: JSON.stringify({
           jobSeekerId: jobSeeker.id,
+          recaptchaToken,
           resumeFileUrl: resumeFileUrl || null,
           desiredJobTitle,
           jobType,

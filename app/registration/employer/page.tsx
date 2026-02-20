@@ -84,7 +84,7 @@ export default function EmployerRegistrationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? '6Len1nEsAAAAAANEJXeLLAb7G8F4rrqBEgnppp7c';
+  const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? '6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

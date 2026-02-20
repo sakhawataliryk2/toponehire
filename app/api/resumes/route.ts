@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
+import { verifyRecaptchaToken } from '../../../lib/recaptcha';
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,6 +46,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    const recaptchaToken = body?.recaptchaToken as string | undefined;
+    const recaptchaOk = await verifyRecaptchaToken(recaptchaToken, 'SUBMIT');
+    if (!recaptchaOk) {
+      return NextResponse.json(
+        { error: 'reCAPTCHA verification failed' },
+        { status: 400 }
+      );
+    }
     
     // Fetch custom fields configuration for RESUME context
     const customFields = await prisma.customField.findMany({

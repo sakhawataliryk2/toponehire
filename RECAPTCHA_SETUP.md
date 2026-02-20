@@ -2,7 +2,7 @@
 
 The app uses **reCAPTCHA Enterprise** with your site key and the same pattern as your snippet:
 
-- Script: `https://www.google.com/recaptcha/enterprise.js?render=6Len1nEsAAAAAANEJXeLLAb7G8F4rrqBEgnppp7c`
+- Script: `https://www.google.com/recaptcha/enterprise.js?render=6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg`
 - **Login**: `grecaptcha.enterprise.ready()` then `grecaptcha.enterprise.execute(siteKey, { action: 'LOGIN' })`
 - **Registration**: same, with `action: 'REGISTER'`
 
@@ -13,7 +13,7 @@ The app uses **reCAPTCHA Enterprise** with your site key and the same pattern as
 Add to your `.env` (and to Vercel/hosting env vars):
 
 ```env
-RECAPTCHA_SECRET_KEY=6Len1nEsAAAAALz7fdPmqEqxrdAdR76zW4Sh9Hkb
+RECAPTCHA_SECRET_KEY=6Le5S20sAAAAALqjF97HY__tiOfl4gZGhopv6PIZ
 ```
 
 - Go to [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials** (or **Security** → **reCAPTCHA Enterprise**).
@@ -35,7 +35,7 @@ RECAPTCHA_MIN_SCORE=0.5
 The site key is loaded from `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` (fallback in code). If you prefer to load it from env, add:
 
 ```env
-NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6Len1nEsAAAAAANEJXeLLAb7G8F4rrqBEgnppp7c
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg
 ```
 
 and we can switch the app to use it.
@@ -75,7 +75,7 @@ So if you open the app at `https://toponehire-xyz.vercel.app/login`, the domain 
 
 ### 3. Check it’s the right key
 
-Confirm the key whose **Key ID** or **Site key** is `6Len1nEsAAAAAANEJXeLLAb7G8F4rrqBEgnppp7c` is the one where you added the domains. If you have multiple keys, it’s easy to edit the wrong one.
+Confirm the key whose **Key ID** or **Site key** is `6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg` is the one where you added the domains. If you have multiple keys, it’s easy to edit the wrong one.
 
 ### 4. Save and wait a minute
 
