@@ -2,7 +2,7 @@
 
 The app uses **reCAPTCHA Enterprise** with your site key and the same pattern as your snippet:
 
-- Script: `https://www.google.com/recaptcha/enterprise.js?render=6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg`
+- Script: `https://www.google.com/recaptcha/enterprise.js?render=6Len1nEsAAAAAANEJXeLLAb7G8F4rrqBEgnppp7c`
 - **Login**: `grecaptcha.enterprise.ready()` then `grecaptcha.enterprise.execute(siteKey, { action: 'LOGIN' })`
 - **Registration**: same, with `action: 'REGISTER'`
 
@@ -13,7 +13,7 @@ The app uses **reCAPTCHA Enterprise** with your site key and the same pattern as
 Add to your `.env` (and to Vercel/hosting env vars):
 
 ```env
-RECAPTCHA_SECRET_KEY=your_enterprise_secret_key_here
+RECAPTCHA_SECRET_KEY=6Len1nEsAAAAALz7fdPmqEqxrdAdR76zW4Sh9Hkb
 ```
 
 - Go to [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials** (or **Security** → **reCAPTCHA Enterprise**).
@@ -32,10 +32,10 @@ RECAPTCHA_MIN_SCORE=0.5
 
 ### 3. No front-end env needed
 
-The site key `6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg` is already in the code. If you prefer to load it from env, add:
+The site key is loaded from `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` (fallback in code). If you prefer to load it from env, add:
 
 ```env
-NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6Len1nEsAAAAAANEJXeLLAb7G8F4rrqBEgnppp7c
 ```
 
 and we can switch the app to use it.
@@ -49,3 +49,44 @@ and we can switch the app to use it.
 | NEXT_PUBLIC_RECAPTCHA_SITE_KEY | `.env` (optional) | Only if you want the site key from env. |
 
 After setting `RECAPTCHA_SECRET_KEY`, restart the dev server or redeploy.
+
+---
+
+## Troubleshooting: "Invalid domain" on Vercel
+
+This error means the **exact hostname** of the page (what you see in the browser address bar) is not in your reCAPTCHA key’s domain list.
+
+### 1. Use the exact hostname (no protocol, no path)
+
+- ✅ Correct: `toponehire.com`, `www.toponehire.com`, `your-app.vercel.app`
+- ❌ Wrong: `https://toponehire.com`, `toponehire.com/login`, `https://www.toponehire.com/`
+
+### 2. Add every domain you use
+
+In [Google Cloud Console](https://console.cloud.google.com/) → **Security** → **reCAPTCHA Enterprise** → your **Website** key → **Domain names** (or **Application restrictions**), add **each** of these that you actually use:
+
+| Where you open the site | Add this domain |
+|-------------------------|------------------|
+| Production (Vercel)     | `your-project.vercel.app` (replace with your real Vercel URL) |
+| Custom domain           | `toponehire.com` and `www.toponehire.com` if you use www |
+| Preview deployments     | Either the exact URL (e.g. `project-git-main-you.vercel.app`) or try adding `vercel.app` so all `*.vercel.app` are allowed |
+
+So if you open the app at `https://toponehire-xyz.vercel.app/login`, the domain list must include `toponehire-xyz.vercel.app`.
+
+### 3. Check it’s the right key
+
+Confirm the key whose **Key ID** or **Site key** is `6Len1nEsAAAAAANEJXeLLAb7G8F4rrqBEgnppp7c` is the one where you added the domains. If you have multiple keys, it’s easy to edit the wrong one.
+
+### 4. Save and wait a minute
+
+After adding or changing domains, **save** the key. Changes can take a short time to apply; try again after 1–2 minutes.
+
+### 5. See the real hostname on Vercel
+
+To know exactly what to add:
+
+- Open your app on Vercel (production or preview).
+- Look at the browser address bar: e.g. `https://toponehire-abc123.vercel.app/...`
+- The part to add is: `toponehire-abc123.vercel.app` (no `https://`, no path).
+
+Add that string to the reCAPTCHA key’s domain list, save, then reload the page and try again.

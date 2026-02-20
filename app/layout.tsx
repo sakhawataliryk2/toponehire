@@ -29,7 +29,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Script
-          src="https://www.google.com/recaptcha/enterprise.js?render=6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg"
+          src={`https://www.google.com/recaptcha/enterprise.js?render=${process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? '6Len1nEsAAAAAANEJXeLLAb7G8F4rrqBEgnppp7c'}`}
           strategy="afterInteractive"
         />
         {children}
