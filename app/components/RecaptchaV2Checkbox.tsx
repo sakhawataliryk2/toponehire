@@ -49,9 +49,10 @@ export const RecaptchaV2Checkbox = forwardRef<RecaptchaV2CheckboxHandle, Props>(
   }, [onComplete]);
 
   const handleLoad = useCallback(() => {
-    if (window.grecaptcha) {
-      window.grecaptcha.ready(renderWidget);
-    }
+    // When the v2 script loads it calls this; the v2 API is ready, so render directly.
+    // Do not call window.grecaptcha.ready() here: if Enterprise script also loaded (from layout),
+    // it overwrites window.grecaptcha and Enterprise has no .ready() (only .enterprise.ready()).
+    renderWidget();
   }, [renderWidget]);
 
   useLayoutEffect(() => {
@@ -59,12 +60,6 @@ export const RecaptchaV2Checkbox = forwardRef<RecaptchaV2CheckboxHandle, Props>(
       (window as Window).__recaptchaV2Ready = handleLoad;
     }
   }, [handleLoad]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.grecaptcha) {
-      window.grecaptcha.ready(renderWidget);
-    }
-  }, [renderWidget]);
 
   useImperativeHandle(
     ref,

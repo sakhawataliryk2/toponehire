@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Script from 'next/script';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import DynamicFormField from '../components/DynamicFormField';
@@ -431,6 +432,10 @@ function CreateResumePageContent() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Script
+        src={`https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`}
+        strategy="afterInteractive"
+      />
       <Header />
       <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-24 2xl:px-32 py-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-8" style={{ fontFamily: 'serif' }}>
