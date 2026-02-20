@@ -268,18 +268,22 @@ function CreateResumePageContent() {
     setLoading(true);
 
     try {
-      // Get reCAPTCHA token before submitting
+      // Get reCAPTCHA token before submitting (wait for script to be ready, retry once)
       let recaptchaToken: string | null = null;
-      if (typeof window !== 'undefined' && (window as any).grecaptcha?.enterprise) {
+      const getToken = async (): Promise<string | null> => {
+        if (typeof window === 'undefined' || !(window as any).grecaptcha?.enterprise) return null;
         await new Promise<void>((resolve) => {
           (window as any).grecaptcha.enterprise.ready(() => resolve());
         });
-        recaptchaToken = await (window as any).grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
-          action: 'SUBMIT',
-        });
+        return (window as any).grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'SUBMIT' });
+      };
+      recaptchaToken = await getToken();
+      if (!recaptchaToken) {
+        await new Promise((r) => setTimeout(r, 1500));
+        recaptchaToken = await getToken();
       }
       if (!recaptchaToken) {
-        alert('reCAPTCHA verification failed. Please refresh the page and try again.');
+        alert('reCAPTCHA could not load. Please refresh the page, wait for the reCAPTCHA badge to appear, and try again.');
         setLoading(false);
         return;
       }

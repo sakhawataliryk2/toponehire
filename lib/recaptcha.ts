@@ -37,7 +37,7 @@ export async function verifyRecaptchaToken(token: string | undefined | null, act
       return false;
     }
 
-    if (action && data.action && data.action !== action) {
+    if (action && data.action && String(data.action).toLowerCase() !== String(action).toLowerCase()) {
       console.warn('reCAPTCHA action mismatch:', data.action, 'expected:', action);
       return false;
     }
