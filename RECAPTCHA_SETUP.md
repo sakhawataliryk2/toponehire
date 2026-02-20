@@ -6,11 +6,51 @@ The app uses **reCAPTCHA Enterprise** with your site key and the same pattern as
 - **Login**: `grecaptcha.enterprise.ready()` then `grecaptcha.enterprise.execute(siteKey, { action: 'LOGIN' })`
 - **Registration**: same, with `action: 'REGISTER'`
 
+---
+
+## Fix "reCAPTCHA verification failed" and "Invalid domain" (Vercel)
+
+Do **both** of these:
+
+### Step 1: Add your Vercel domain to the key
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → **Security** → **reCAPTCHA Enterprise**.
+2. Open the **Website** key whose **Site key** is `6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg`.
+3. Under **Domain names** (or **Application restrictions**), add exactly: **`toponehire.vercel.app`** (no https, no path).
+4. Save. Wait 1–2 minutes.
+
+### Step 2: Use Enterprise verification (recommended)
+
+Tokens from `enterprise.js` verify correctly when you use the Enterprise API. Add these to **Vercel** (Project → Settings → Environment Variables) and to your local `.env`:
+
+```env
+RECAPTCHA_PROJECT_ID=your-google-cloud-project-id
+RECAPTCHA_ENTERPRISE_API_KEY=your-api-key-with-recaptcha-enterprise-enabled
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg
+```
+
+- **RECAPTCHA_PROJECT_ID**: Your Google Cloud project ID (e.g. `my-project-123`) where the reCAPTCHA key was created. Find it in Cloud Console project dropdown or IAM & Admin → Settings.
+- **RECAPTCHA_ENTERPRISE_API_KEY**: In **APIs & Services** → **Credentials** → **Create credentials** → **API key**. Restrict the key to **Recaptcha Enterprise API**.
+
+Redeploy after setting the variables. Login and registration should then succeed.
+
+---
+
 ## What you need to add
 
-### 1. Server-side secret (required for verification)
+### 1a. Enterprise verification (recommended)
 
-Add to your `.env` (and to Vercel/hosting env vars):
+Set these so the app uses the createAssessment API (see Step 2 above for how to get them):
+
+```env
+RECAPTCHA_PROJECT_ID=your-gcp-project-id
+RECAPTCHA_ENTERPRISE_API_KEY=your-api-key
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg
+```
+
+### 1b. Legacy secret (fallback)
+
+If you do not set the Enterprise vars, the app uses the classic siteverify endpoint. Add to `.env` and Vercel:
 
 ```env
 RECAPTCHA_SECRET_KEY=6Le5S20sAAAAALqjF97HY__tiOfl4gZGhopv6PIZ
@@ -42,13 +82,14 @@ and we can switch the app to use it.
 
 ## Summary
 
-| You provide | Where | Purpose |
-|------------|--------|--------|
-| **RECAPTCHA_SECRET_KEY** | `.env` and hosting | Server-side token verification (required). |
+| Variable | Where | Purpose |
+|----------|--------|--------|
+| **RECAPTCHA_PROJECT_ID** + **RECAPTCHA_ENTERPRISE_API_KEY** | `.env` and Vercel | Enterprise verification (recommended). |
+| **RECAPTCHA_SECRET_KEY** | `.env` and Vercel | Fallback legacy verification. |
+| NEXT_PUBLIC_RECAPTCHA_SITE_KEY | `.env` and Vercel | Site key (used by frontend and Enterprise API). |
 | RECAPTCHA_MIN_SCORE | `.env` (optional) | Minimum score; default 0.5. |
-| NEXT_PUBLIC_RECAPTCHA_SITE_KEY | `.env` (optional) | Only if you want the site key from env. |
 
-After setting `RECAPTCHA_SECRET_KEY`, restart the dev server or redeploy.
+After changing env vars, restart the dev server or redeploy.
 
 ---
 
