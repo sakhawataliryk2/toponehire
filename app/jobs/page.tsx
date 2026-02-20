@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import JobSearchBar from '../components/JobSearchBar';
@@ -19,6 +20,8 @@ interface Job {
 }
 
 export default function JobsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +61,30 @@ export default function JobsPage() {
   useEffect(() => {
     if (jobSeeker?.id) fetchSavedJobs(jobSeeker.id);
   }, [jobSeeker?.id, fetchSavedJobs]);
+
+  // After login with saveJobId, auto-save that job and clear the param (once per jobSeeker + saveJobId)
+  const processedSaveJobIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const saveJobId = searchParams.get('saveJobId');
+    if (!saveJobId || !jobSeeker?.id || processedSaveJobIdRef.current === saveJobId) return;
+    processedSaveJobIdRef.current = saveJobId;
+    (async () => {
+      try {
+        const res = await fetch('/api/job-seekers/saved-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobSeekerId: jobSeeker.id, jobId: saveJobId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.saved !== false) {
+          setSavedJobIds((prev) => new Set([...prev, saveJobId]));
+        }
+      } catch (_) {}
+      const u = new URL(window.location.href);
+      u.searchParams.delete('saveJobId');
+      router.replace(u.pathname + u.search);
+    })();
+  }, [jobSeeker?.id, searchParams.get('saveJobId'), router]);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -156,7 +183,7 @@ export default function JobsPage() {
                     description={stripHtml(job.jobDescription)}
                     company={job.employer.toUpperCase()}
                     location={job.location.toUpperCase()}
-                    isSaved={jobSeeker ? savedJobIds.has(job.id) : undefined}
+                    isSaved={jobSeeker ? savedJobIds.has(job.id) : false}
                     saving={savingJobId === job.id}
                     onSaveToggle={
                       jobSeeker
@@ -197,7 +224,16 @@ export default function JobsPage() {
                               setSavingJobId(null);
                             }
                           }
-                        : undefined
+                        : (jobId, save) => {
+                            if (save) {
+                              router.push(
+                                '/login?returnUrl=' +
+                                  encodeURIComponent('/jobs') +
+                                  '&saveJobId=' +
+                                  encodeURIComponent(jobId)
+                              );
+                            }
+                          }
                     }
                   />
                 ))}

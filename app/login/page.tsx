@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -9,9 +9,12 @@ import { RecaptchaV2Checkbox, type RecaptchaV2CheckboxHandle } from '../componen
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get('returnUrl') || '/job-seeker/dashboard';
+  const saveJobId = searchParams.get('saveJobId');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState<'employer' | 'job-seeker'>('employer');
+  const [userType, setUserType] = useState<'employer' | 'job-seeker'>(saveJobId ? 'job-seeker' : 'employer');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,9 +28,10 @@ export default function LoginPage() {
     if (employerAuth) {
       router.push('/my-account');
     } else if (jobSeekerAuth) {
-      router.push('/job-seeker/dashboard');
+      const url = saveJobId ? `${returnUrl}?saveJobId=${encodeURIComponent(saveJobId)}` : returnUrl;
+      router.push(url);
     }
-  }, [router]);
+  }, [router, returnUrl, saveJobId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,11 +73,12 @@ export default function LoginPage() {
           alert('Sign in successful!');
         }
 
-        // Redirect based on user type
+        // Redirect based on user type and return URL (e.g. after "save job" as guest)
         if (userType === 'employer') {
           router.push('/my-account');
         } else {
-          router.push('/job-seeker/dashboard');
+          const url = saveJobId ? `${returnUrl}?saveJobId=${encodeURIComponent(saveJobId)}` : returnUrl;
+          router.push(url);
         }
       } else {
         const message = data?.error ?? (data?.details ? `${data.error || 'Error'}: ${data.details}` : null);
@@ -94,6 +99,12 @@ export default function LoginPage() {
       <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-24 2xl:px-32 py-12">
         <div className="max-w-md mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 mb-8 text-center">Sign in</h1>
+
+          {saveJobId && (
+            <p className="mb-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm text-center">
+              Sign in as a job seeker to save this job to your list.
+            </p>
+          )}
           
           {/* User Type Toggle */}
           <div className="mb-6 flex gap-4 justify-center">
