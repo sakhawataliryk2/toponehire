@@ -36,6 +36,19 @@ Redeploy after setting the variables. Login and registration should then succeed
 
 ---
 
+## reCAPTCHA v2 Checkbox (Sign in / Sign up)
+
+Sign-in and registration pages use **reCAPTCHA v2 Checkbox** (“I’m not a robot”) so users must complete the checkbox and any image challenge before submitting.
+
+1. Create a **v2 Checkbox** key at [google.com/recaptcha/admin](https://www.google.com/recaptcha/admin): choose **reCAPTCHA v2** → **“I’m not a robot” Checkbox**, add your domains (e.g. `toponehire.vercel.app`), then get the **Site key** and **Secret key**.
+2. In `.env` and Vercel set:
+   - `NEXT_PUBLIC_RECAPTCHA_V2_SITE_KEY` = your v2 site key  
+   - `RECAPTCHA_V2_SECRET_KEY` = your v2 secret key  
+
+The Resume (add-listing) flow still uses the Enterprise/invisible reCAPTCHA; only Sign in and Sign up use the v2 checkbox.
+
+---
+
 ## What you need to add
 
 ### 1a. Enterprise verification (recommended)

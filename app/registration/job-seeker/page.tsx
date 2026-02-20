@@ -3,9 +3,10 @@
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import DynamicFormField from '../../components/DynamicFormField';
+import { RecaptchaV2Checkbox, type RecaptchaV2CheckboxHandle } from '../../components/RecaptchaV2Checkbox';
 
 interface CustomField {
   id: string;
@@ -76,30 +77,26 @@ export default function JobSeekerRegistrationPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? '6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg';
+  const recaptchaRef = useRef<RecaptchaV2CheckboxHandle>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError('');
-    
+
     if (!formData.agreeToTerms) {
       alert('Please agree to the terms of use and privacy policy');
-      setIsSubmitting(false);
       return;
     }
-    
+
+    const recaptchaToken = recaptchaRef.current?.getToken() ?? null;
+    if (!recaptchaToken) {
+      setError('Please complete the "I\'m not a robot" captcha before registering.');
+      alert('Please complete the "I\'m not a robot" captcha before registering.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      let recaptchaToken: string | null = null;
-      if (typeof window !== 'undefined' && (window as any).grecaptcha?.enterprise) {
-        await new Promise<void>((resolve) => {
-          (window as any).grecaptcha.enterprise.ready(() => resolve());
-        });
-        recaptchaToken = await (window as any).grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
-          action: 'REGISTER',
-        });
-      }
       // Collect all custom field values
       const submissionData: Record<string, any> = {};
       
@@ -132,6 +129,7 @@ export default function JobSeekerRegistrationPage() {
       const data = await response.json();
 
       if (response.ok) {
+        recaptchaRef.current?.reset();
         alert('Registration successful! Your account has been created.');
         // Auto-login the user
         localStorage.setItem('jobSeekerAuth', 'true');
@@ -248,6 +246,8 @@ export default function JobSeekerRegistrationPage() {
               </label>
             </div>
 
+            <RecaptchaV2Checkbox ref={recaptchaRef} />
+
             {/* Submit Button */}
             <div className="text-center">
               {error && (
@@ -262,21 +262,6 @@ export default function JobSeekerRegistrationPage() {
               >
                 {isSubmitting ? 'REGISTERING...' : 'REGISTER'}
               </button>
-            </div>
-
-            {/* reCAPTCHA */}
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-              <div className="bg-blue-500 text-white px-3 py-2 rounded text-xs">
-                protected by reCAPTCHA
-              </div>
-              <a href="#" className="text-blue-500 hover:underline">Privacy</a>
-              <span>-</span>
-              <a href="#" className="text-blue-500 hover:underline">Terms</a>
-              <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-400">
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </div>
             </div>
           </form>
           )}

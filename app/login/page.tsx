@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import { RecaptchaV2Checkbox, type RecaptchaV2CheckboxHandle } from '../components/RecaptchaV2Checkbox';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,8 +15,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? '6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg';
+  const recaptchaRef = useRef<RecaptchaV2CheckboxHandle>(null);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -32,19 +32,14 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const recaptchaToken = recaptchaRef.current?.getToken() ?? null;
+    if (!recaptchaToken) {
+      setError('Please complete the "I\'m not a robot" captcha before signing in.');
+      return;
+    }
     setLoading(true);
 
     try {
-      let recaptchaToken: string | null = null;
-      if (typeof window !== 'undefined' && (window as any).grecaptcha?.enterprise) {
-        await new Promise<void>((resolve, reject) => {
-          (window as any).grecaptcha.enterprise.ready(() => resolve());
-        });
-        recaptchaToken = await (window as any).grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
-          action: 'LOGIN',
-        });
-      }
-
       const endpoint = userType === 'employer' 
         ? '/api/employers/login' 
         : '/api/job-seekers/login';
@@ -62,6 +57,7 @@ export default function LoginPage() {
       const data = isJson ? await response.json() : null;
 
       if (response.ok && data?.user) {
+        recaptchaRef.current?.reset();
         // Store auth data
         const authKey = userType === 'employer' ? 'employerAuth' : 'jobSeekerAuth';
         const userKey = userType === 'employer' ? 'employerUser' : 'jobSeekerUser';
@@ -187,6 +183,8 @@ export default function LoginPage() {
                 </a>
               </div>
             </div>
+
+            <RecaptchaV2Checkbox ref={recaptchaRef} />
 
             <div>
               <button

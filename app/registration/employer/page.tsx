@@ -3,8 +3,9 @@
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import DynamicFormField from '../../components/DynamicFormField';
+import { RecaptchaV2Checkbox, type RecaptchaV2CheckboxHandle } from '../../components/RecaptchaV2Checkbox';
 
 interface CustomField {
   id: string;
@@ -83,30 +84,26 @@ export default function EmployerRegistrationPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? '6Le5S20sAAAAABx0iFJVJw6Ft32Xy9KL0J_F9kdg';
+  const recaptchaRef = useRef<RecaptchaV2CheckboxHandle>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError('');
 
     if (!formData.agreeToTerms) {
       alert('Please agree to the terms of use and privacy policy');
-      setIsSubmitting(false);
       return;
     }
-    
+
+    const recaptchaToken = recaptchaRef.current?.getToken() ?? null;
+    if (!recaptchaToken) {
+      setError('Please complete the "I\'m not a robot" captcha before registering.');
+      alert('Please complete the "I\'m not a robot" captcha before registering.');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      let recaptchaToken: string | null = null;
-      if (typeof window !== 'undefined' && (window as any).grecaptcha?.enterprise) {
-        await new Promise<void>((resolve) => {
-          (window as any).grecaptcha.enterprise.ready(() => resolve());
-        });
-        recaptchaToken = await (window as any).grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, {
-          action: 'REGISTER',
-        });
-      }
       // Collect all custom field values
       const submissionData: Record<string, any> = {};
       
@@ -196,6 +193,7 @@ export default function EmployerRegistrationPage() {
       const data = await response.json();
 
       if (response.ok) {
+        recaptchaRef.current?.reset();
         alert('Registration successful! You can now sign in.');
         window.location.href = '/login';
       } else {
@@ -308,6 +306,8 @@ export default function EmployerRegistrationPage() {
                 </Link>
               </label>
             </div>
+
+            <RecaptchaV2Checkbox ref={recaptchaRef} />
 
             {/* Submit Button */}
             <div className="text-center">
