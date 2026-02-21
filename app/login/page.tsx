@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import { RecaptchaV2Checkbox, type RecaptchaV2CheckboxHandle } from '../components/RecaptchaV2Checkbox';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get('returnUrl') || '/job-seeker/dashboard';
@@ -222,5 +222,25 @@ export default function LoginPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white">
+          <Header activePage="login" />
+          <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-24 2xl:px-32 py-12">
+            <div className="max-w-md mx-auto text-center py-12">
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }
