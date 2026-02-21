@@ -1,10 +1,30 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+
 export default function HeroSection() {
+  const [liveJobCount, setLiveJobCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch('/api/jobs?status=Active&countOnly=true')
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.count === 'number') setLiveJobCount(data.count);
+      })
+      .catch(() => {});
+  }, []);
+
+  const countText =
+    liveJobCount !== null
+      ? `Search ${liveJobCount.toLocaleString()} live jobs`
+      : 'Search live jobs';
+
   return (
     <section className="relative bg-gradient-to-r from-gray-800 to-gray-900 text-white py-20">
       <div className="absolute inset-0 bg-black opacity-40"></div>
       <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-24 2xl:px-32 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Search 10,306 live jobs</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">{countText}</h2>
           <p className="text-2xl md:text-3xl mb-8">
             Elevate your career with <span className="text-yellow-400">TopOneHire</span>
           </p>

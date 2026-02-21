@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -19,7 +19,7 @@ interface Job {
   jobType: string;
 }
 
-export default function JobsPage() {
+function JobsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -250,5 +250,26 @@ export default function JobsPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white">
+          <Header activePage="jobs" />
+          <JobSearchBar onKeywordChange={() => {}} onLocationChange={() => {}} />
+          <div className="container mx-auto px-4 md:px-12 lg:px-16 xl:px-24 2xl:px-32 py-8">
+            <div className="text-center py-12">
+              <p className="text-gray-600">Loading jobs...</p>
+            </div>
+          </div>
+          <Footer />
+        </div>
+      }
+    >
+      <JobsPageContent />
+    </Suspense>
   );
 }

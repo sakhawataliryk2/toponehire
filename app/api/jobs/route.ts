@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
       where.featured = true;
     }
 
+    if (searchParams.get('countOnly') === 'true') {
+      const count = await prisma.job.count({ where });
+      return NextResponse.json({ count });
+    }
+
     const jobs = await prisma.job.findMany({
       where,
       orderBy: { postingDate: 'desc' },
